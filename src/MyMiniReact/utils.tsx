@@ -1,0 +1,51 @@
+import _ from "lodash";
+import { MyElement, MyProps } from "./type";
+
+const joinSign = '#######';
+
+function generateUUID(indicatorDataIndex: string) {
+  return (
+    indicatorDataIndex +
+    joinSign +
+    (Number(new Date()) +
+      Math.random().toString(36).slice(2) +
+      Math.random().toString(36).slice(2))
+  );
+}
+
+const idSet = new Set();
+
+export function getUUID(str: string) {
+  let str2 = generateUUID(str);
+  while(idSet.has(str2)) {
+    str2 = generateUUID(str);
+  }
+  idSet.add(str2)
+  return str2;
+}
+
+export function isStringOrNumber(element: MyElement | null | MyProps) {
+  return _.isString(element) || _.isNumber(element);
+}
+
+export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
+  if (isStringOrNumber(obj1)) {
+    return obj1 === obj2;
+  }
+
+  if (!_.isObject(obj1) || _.isNil(obj1)) {
+    throw '类型错误'
+  }
+
+
+  const keys = _.keys(obj1);
+  if (_.size(keys) !== _.size(_.keys(obj2))) {
+    return false;
+  }
+  for(const key of keys) {
+    if (obj1[key] !== obj2[key]) {
+      return false;
+    }
+  }
+  return true;
+}
