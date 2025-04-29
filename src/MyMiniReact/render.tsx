@@ -4,7 +4,7 @@ import { createFiber } from "./fiber";
 import { IDispatchValue, IStateHook, IStateParams, MyElement, MyFiber } from "./type";
 import { createDom, isHostComponent } from "./dom";
 import { ensureRootIsScheduled } from "./ReactDom";
-import { isPropsEqual, isStringOrNumber } from "./utils";
+import { getPropsByElement, isPropsEqual, isStringOrNumber } from "./utils";
 
 let first = true;
 
@@ -16,6 +16,7 @@ export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
   let index = 0;
   let prevSibling: MyFiber | null = null;
   let oldFiberSibling: MyFiber | null = fiber.alternate?.child ?? null;
+
   while (index < children.length || oldFiberSibling) {
     const child =  children[index];
     const isSameType = oldFiberSibling && ((oldFiberSibling.type === child.type &&
@@ -32,9 +33,9 @@ export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
 
     if (isSameType) {
       newFiber = createFiber(child, index, oldFiberSibling, fiber);
-      if (!isPropsEqual(newFiber.pendingProps, oldFiberSibling.memoizedProps)) {
+      if (!isPropsEqual(getPropsByElement(child), oldFiberSibling.memoizedProps)) {
         setFiberWithFlags(newFiber, UPDATE)
-      }
+      } 
     } else if (!oldFiberSibling) {
       let flags = PLACEMENT;
       if (!rootFiber) {
@@ -49,10 +50,14 @@ export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
         setFiberWithFlags(newFiber, flags)
       }
       // console.log('新建', child, newFiber)
-    } else if (oldFiberSibling && !child) {
+    } else if (oldFiberSibling) {
       // oldFiberSibling.flags |= DELETE;
       setFiberWithFlags(oldFiberSibling, DELETE)
       deletions.push(oldFiberSibling);
+      if (child) {
+        newFiber = createFiber(child, index, null, fiber);
+        setFiberWithFlags(newFiber, PLACEMENT)
+      }
     }
 
     if (index === 0) {
@@ -65,12 +70,24 @@ export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
     index++;
   }
   // console.log(_.cloneDeep(fiber))
+  return fiber.child;
 }
 
 export function beginWork(fiber: MyFiber): MyFiber | null {
   if (!fiber) {
     return null;
   }
+
+  if (
+    fiber.alternate && 
+    isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps)
+ ) {
+    if (fiber.childLanes === NOLANE && fiber.lanes === NOLANE) {
+      console.log('跳过beginWork', fiber)
+      return null;
+    }
+ }
+
   console.warn('beginWork', _.cloneDeep(fiber))
 
 
@@ -82,25 +99,26 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     hookIndex = 0;
     currentlyFiber = fiber;
     const elements = (fiber.type as Function)(fiber.pendingProps);
-    reconcileChildren(fiber, [elements]);
+    const next = reconcileChildren(fiber, [elements]);
     currentlyFiber = null;
-    return fiber.child;
+    return next;
   }
 
   if (!fiber.pendingProps.children) {
     return null;
   }
 
-  reconcileChildren(fiber,
+  const next = reconcileChildren(fiber,
     _.isArray(fiber.pendingProps.children) ?
       fiber.pendingProps.children :
       [fiber.pendingProps.children]
   );
 
-  return fiber.child;
+  return next;
 }
 
 export function completeWork(fiber: MyFiber) {
+  fiber.memoizedProps = fiber.pendingProps;
   if (fiber && isHostComponent(fiber) && !fiber.stateNode) {
     createDom(fiber);
   }
@@ -132,19 +150,21 @@ export function completeWork(fiber: MyFiber) {
 
 export function setFiberWithFlags(fiber: MyFiber, flags: number) {
   fiber.flags |= flags;
-  const lanes = DEFAULTLANE;
-  fiber.lanes = lanes;
+  fiber.lanes |= DEFAULTLANE;
   let currentFiber = fiber.return;
 
   while (currentFiber) {
-    currentFiber.childLanes |= lanes;
+    // console.log(currentFiber);
+    currentFiber.childLanes |= fiber.lanes;
     currentFiber = currentFiber.return;
   }
   // rootFiber.lanes = lanes;
   // if (!rootFiber.firstEffect) {
   //   rootFiber.firstEffect = fiber;
   // }
-
+  // if (flags === DELETE) {
+  //   fiber.return = null;
+  // }
 }
 
 export const globalUpdateList: IDispatchValue<unknown>[] = []

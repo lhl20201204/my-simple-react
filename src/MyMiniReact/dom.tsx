@@ -31,6 +31,9 @@ export function updateDom(fiber: MyFiber) {
   if (isHostComponent(fiber)) {
     const newProps = fiber.pendingProps;
     const dom = fiber.stateNode;
+
+    // fiber.memoizedProps = fiber.pendingProps;
+
     if (dom) {
       if (fiber.type === 'text') {
         dom.textContent =`${newProps}`;
@@ -66,6 +69,7 @@ export function updateDom(fiber: MyFiber) {
         }
       });
     }
+
   }
 }
 

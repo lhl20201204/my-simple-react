@@ -3,14 +3,14 @@ import { commitRoot } from "./commit";
 import { FUNCTIONCOMPONENT, HOSTCOMPONENT, NOEFFECT, NOLANE, setWorkInProgress, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork, completeWork } from "./render";
-import { isStringOrNumber } from "./utils";
+import { getPropsByElement, isStringOrNumber } from "./utils";
 
 
 let id = 0;
 export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null, parentFiber: MyFiber | null, tag?: number) {
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id ++,
-    pendingProps: isStringOrNumber(element) ? element : element?.props,
+    pendingProps: getPropsByElement(element),
     type: isStringOrNumber(element) ? 'text' : element?.type,
     flags: NOEFFECT,
     stateNode: null,
@@ -38,12 +38,15 @@ export function createFiber(element: MyElement | null, index: number, alternateF
 
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
-    newFiber.pendingProps = isStringOrNumber(element) ? element : element?.props,
+    newFiber.pendingProps = getPropsByElement(element),
     newFiber.ref = element?.ref;
+    newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
     newFiber.hook = alternateFiber.hook;
     newFiber.stateNode = alternateFiber.stateNode;
+    newFiber.child = alternateFiber.child;
+    newFiber.sibling = alternateFiber.sibling;
 
     alternateFiber.hook  = [];
     alternateFiber.memoizedProps = alternateFiber.pendingProps;

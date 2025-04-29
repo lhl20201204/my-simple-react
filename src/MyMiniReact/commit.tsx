@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { DELETE, fiberRoot, HOSTCOMPONENT, PLACEMENT, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { DELETE, deletions, fiberRoot, HOSTCOMPONENT, PLACEMENT, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { MyFiber, MyStateNode } from "./type";
 import { isHostComponent, updateDom } from "./dom";
 
@@ -14,24 +14,26 @@ function getParentStateNode(fiber: MyFiber) {
 
 function getStateNode(fiber: MyFiber) {
   if (!fiber) return null;
-  let parentDom: MyStateNode | null = null;
-  let childFiber = fiber.child;
-  while (!parentDom) {
-    parentDom = childFiber.stateNode;
+  let childFiber = fiber;
+  while (childFiber && !childFiber.stateNode) {
     childFiber = childFiber.child;
   }
-  return parentDom;
+  return childFiber?.stateNode || null;
 }
 
 function commitDelete(fiber: MyFiber) {
   if (!fiber) return;
-  const parentDom: MyStateNode | null = getParentStateNode(fiber)
-  commitDelete(fiber.child);
-  commitDelete(fiber.sibling);
-  const childDom: MyStateNode | null = getStateNode(fiber);
-  if (parentDom && childDom) {
-    parentDom.removeChild(childDom);
+  let f = fiber.child;
+  while(f) {
+    commitDelete(f);
+    f = f.sibling;
   }
+  const parentDom: MyStateNode | null = getParentStateNode(fiber)
+  const childDom: MyStateNode | null = getStateNode(fiber);
+  console.log(parentDom, childDom)
+    if (parentDom && childDom) {
+      parentDom.removeChild(childDom);
+    }
 }
 
 function commitPlacement(fiber: MyFiber) {
@@ -76,6 +78,9 @@ export function commitRoot() {
   while(firstEffect) {
     commitWork(firstEffect);
     firstEffect = firstEffect.nextEffect;
+  }
+  while(deletions.length) {
+    commitWork(deletions.shift())
   }
   wipRoot.firstEffect = null;
   wipRoot.lastEffect = null;
