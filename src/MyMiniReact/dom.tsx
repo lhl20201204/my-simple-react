@@ -42,12 +42,18 @@ export function updateDom(fiber: MyFiber) {
 
       const oldProps = fiber.alternate?.memoizedProps || {};
       Object.keys(oldProps).forEach(key => {
-        if (key !== 'children' && newProps[key] === undefined) {
+        if (key === 'style') {
+          _.forEach(oldProps[key], (v, k) => {
+            if (_.isNil(newProps[key]?.[k])) {
+              (dom as HTMLElement).style[k] = undefined;
+            }
+          })
+        } else if (key !== 'children' && newProps[key] === undefined) {
           dom[key] = undefined;
         }
       });
       Object.keys(newProps).forEach(key => {
-        if (key !== 'children') {
+        if (key !== 'children' && newProps[key] !== oldProps[key]) {
           if (_.startsWith(key, 'on')) {
             const fnKey = getKeys(key)
             if (_.get(dom, fnKey)) {
@@ -64,7 +70,13 @@ export function updateDom(fiber: MyFiber) {
            });
             dom.addEventListener(key.slice(2).toLowerCase(), _.get(dom, fnKey));
           } else {
-            dom[key] = newProps[key];
+            if (key === 'style') {
+              _.forEach(newProps[key], (v, k) => {
+                (dom as HTMLElement).style[k] = v;
+              })
+            } else {
+              dom[key] = newProps[key];
+            }
           }
         }
       });

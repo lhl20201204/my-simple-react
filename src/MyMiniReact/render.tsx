@@ -11,8 +11,17 @@ let first = true;
 export let currentlyFiber: MyFiber | null = null;
 let hookIndex = 0;
 
+export function getFlags(fiber: MyFiber) {
+  let parent = fiber;
+      while (parent && !(parent.flags & PLACEMENT)) {
+        // console.log({ parent })
+        parent = parent.return;
+      }
+  return parent && ( parent.flags & PLACEMENT) ? NOEFFECT : PLACEMENT ;
+}
+
 export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
-  // console.log('reconcileChildren', _.cloneDeep({ fiber, children }))
+  console.log('reconcileChildren', _.cloneDeep({ fiber, children }))
   let index = 0;
   let prevSibling: MyFiber | null = null;
   let oldFiberSibling: MyFiber | null = fiber.alternate?.child ?? null;
@@ -24,39 +33,40 @@ export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
     || (oldFiberSibling.type === 'text' && isStringOrNumber(child)))
     let newFiber: MyFiber | null = null;
 
-    // console.log(_.cloneDeep({
-    //   child,
-    //   oldFiberSibling,
-    //   fiber,
-    //   isSameType
-    // }))
+    console.log(_.cloneDeep({
+      child,
+      oldFiberSibling,
+      fiber,
+      isSameType
+    }))
 
     if (isSameType) {
+  
       newFiber = createFiber(child, index, oldFiberSibling, fiber);
       if (!isPropsEqual(getPropsByElement(child), oldFiberSibling.memoizedProps)) {
+        // newFiber = createFiber(child, index, oldFiberSibling, fiber);
         setFiberWithFlags(newFiber, UPDATE)
-      } 
-    } else if (!oldFiberSibling) {
-      let flags = PLACEMENT;
-      if (!rootFiber) {
-        if (!first) {
-          flags = NOEFFECT;
-        }
-        first = false;
+      }  else {
+        console.warn('复用整个newFiber', newFiber, newFiber.childLanes, newFiber.lanes)
+        // if (newFiber.lanes === NOLANE && newFiber.childLanes === NOLANE) {
+        //   newFiber = oldFiberSibling
+        // }
+        // newFiber = oldFiberSibling
       }
-
+    } else if (!oldFiberSibling) {
+      const flags = getFlags(fiber)
       newFiber = createFiber(child, index, oldFiberSibling, fiber);
       if (flags === PLACEMENT) {
         setFiberWithFlags(newFiber, flags)
       }
-      // console.log('新建', child, newFiber)
+      // console.log('新建', flags === PLACEMENT ? 'PLACEMENT' : 'NOEFFECT', newFiber)
     } else if (oldFiberSibling) {
       // oldFiberSibling.flags |= DELETE;
       setFiberWithFlags(oldFiberSibling, DELETE)
       deletions.push(oldFiberSibling);
-      if (child) {
+      if (!_.isNil(child)) {
         newFiber = createFiber(child, index, null, fiber);
-        setFiberWithFlags(newFiber, PLACEMENT)
+        setFiberWithFlags(newFiber, getFlags(fiber))
       }
     }
 
@@ -97,10 +107,11 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
 
   if (typeof fiber.type === 'function') {
     hookIndex = 0;
+    const preFiber = currentlyFiber;
     currentlyFiber = fiber;
     const elements = (fiber.type as Function)(fiber.pendingProps);
     const next = reconcileChildren(fiber, [elements]);
-    currentlyFiber = null;
+    currentlyFiber = preFiber;
     return next;
   }
 
@@ -149,6 +160,11 @@ export function completeWork(fiber: MyFiber) {
 }
 
 export function setFiberWithFlags(fiber: MyFiber, flags: number) {
+  console.error('添加', fiber, {
+    [PLACEMENT]: 'PLACEMENT',
+    [DELETE]: 'DELETE',
+    [UPDATE]: 'UPDATE'
+  }[flags])
   fiber.flags |= flags;
   fiber.lanes |= DEFAULTLANE;
   let currentFiber = fiber.return;

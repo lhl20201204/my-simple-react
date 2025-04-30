@@ -1,5 +1,6 @@
 import _ from "lodash";
-import { MyElement, MyProps } from "./type";
+import { MyElement, MyFiber, MyProps } from "./type";
+import { IRenderNode, renderTree } from "../View";
 
 const joinSign = '#######';
 
@@ -52,4 +53,38 @@ export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
     }
   }
   return true;
+}
+
+export function logFiberTree(fiber: MyFiber) {
+  const dfs = (f: MyFiber) => {
+    if (!f) {
+      return null;
+    }
+    let name: any = f.type;
+    if (typeof name === 'function') {
+      name  = (name as Function).name ;
+    } else if (name === 'text') {
+      name =`${f.memoizedProps }`
+    } else {
+      name = _.compact([name, f.memoizedProps?.id]).join('#')
+    }
+    const node: IRenderNode = {
+      value: f.id,
+      name: `${f.id}(${name})`,
+      children: []
+    }
+    let first = f.child;
+    while(first) {
+      const n = dfs(first);
+      if (n) {
+        node.children.push(n)
+      }
+      first = first.sibling;
+    }
+    return node;
+  }
+  // console.log(dfs(fiber));
+  const dom = document.getElementById('view');
+  // console.log(dom);
+  renderTree(dom, dfs(fiber))
 }
