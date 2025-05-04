@@ -8,10 +8,38 @@
   </head>
   <body>
     <div id="app"></div>
-    <img src="./src/MyMiniReact/jsx.png" />
+    <img id="source" src="./src/MyMiniReact/jsx.png" />
     <canvas id="view" width="500" height="700"></canvas>
+<!-- <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+<script>
+   const App = () => {
+    React.useEffect(() => {
+      console.log('useEffect测试',  [document.getElementById('hhhhh')])
+    }, [])
+    const dom2 = React.createElement('span', {
+    children: 'hhh',
+    id: 'hhhhh'
+   });
+   console.log(dom2)
+    return dom2
+   }
+   const dom = React.createElement(App);
+   console.log(dom)
+   ReactDOM.render(React.createElement(() => {
+    return React.createElement('div', {
+      children: dom
+    })
+   }), document.getElementById('app'))
+</script> -->
     <script type="module" src="/src/main.tsx"></script>
     <style>
+       
+      #source {
+        width: 600px;
+        aspect-ratio:initial;
+      }
+
       #view {
         border: 1px solid gray;
         margin-top: 20px;

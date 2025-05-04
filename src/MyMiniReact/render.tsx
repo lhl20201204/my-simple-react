@@ -1,10 +1,10 @@
 import _ from "lodash";
-import { DEFAULTLANE, DELETE, deletions, getBatchUpdating, NOEFFECT, NOLANE, PLACEMENT, rootFiber, UPDATE } from "./const";
+import { DEFAULTLANE, DELETE, deletions, EFFECTHOOK, FUNCTIONCOMPONENT, getBatchUpdating, isInDebugger, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, ROOTCOMPONENT, UPDATE } from "./const";
 import { createFiber } from "./fiber";
-import { IDispatchValue, IStateHook, IStateParams, MyElement, MyFiber } from "./type";
+import { IDispatchValue, IEffectHook, IHook, IRefHook, IStateHook, IStateParams, MyElement, MyFiber } from "./type";
 import { createDom, isHostComponent } from "./dom";
 import { ensureRootIsScheduled } from "./ReactDom";
-import { getPropsByElement, isPropsEqual, isStringOrNumber } from "./utils";
+import { getPropsByElement, isDepEqual, isPropsEqual, isStringOrNumber, logEffectType } from "./utils";
 
 let first = true;
 
@@ -17,11 +17,11 @@ export function getFlags(fiber: MyFiber) {
         // console.log({ parent })
         parent = parent.return;
       }
-  return parent && ( parent.flags & PLACEMENT) ? NOEFFECT : PLACEMENT ;
+  return (parent && ( parent.flags & PLACEMENT)) ? NOEFFECT : PLACEMENT ;
 }
 
 export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
-  console.log('reconcileChildren', _.cloneDeep({ fiber, children }))
+  isInDebugger &&  console.log('reconcileChildren', _.cloneDeep({ fiber, children }))
   let index = 0;
   let prevSibling: MyFiber | null = null;
   let oldFiberSibling: MyFiber | null = fiber.alternate?.child ?? null;
@@ -33,32 +33,34 @@ export function reconcileChildren(fiber: MyFiber, children: MyElement[]) {
     || (oldFiberSibling.type === 'text' && isStringOrNumber(child)))
     let newFiber: MyFiber | null = null;
 
-    console.log(_.cloneDeep({
-      child,
-      oldFiberSibling,
-      fiber,
-      isSameType
-    }))
+    // console.log(_.cloneDeep({
+    //   child,
+    //   oldFiberSibling,
+    //   fiber,
+    //   isSameType
+    // }))
 
     if (isSameType) {
-  
-      newFiber = createFiber(child, index, oldFiberSibling, fiber);
       if (!isPropsEqual(getPropsByElement(child), oldFiberSibling.memoizedProps)) {
-        // newFiber = createFiber(child, index, oldFiberSibling, fiber);
+        newFiber = createFiber(child, index, oldFiberSibling, fiber);
+        // console.log(getPropsByElement(child), oldFiberSibling.memoizedProps, 'Update', _.cloneDeep(newFiber))
         setFiberWithFlags(newFiber, UPDATE)
       }  else {
-        console.warn('复用整个newFiber', newFiber, newFiber.childLanes, newFiber.lanes)
-        // if (newFiber.lanes === NOLANE && newFiber.childLanes === NOLANE) {
-        //   newFiber = oldFiberSibling
-        // }
+        if (oldFiberSibling.lanes === NOLANE && oldFiberSibling.childLanes === NOLANE) {
+          newFiber = oldFiberSibling
+          newFiber.return = fiber;
+          // console.log('自己和儿子都没有更新', _.cloneDeep(oldFiberSibling), '重定向父亲', _.cloneDeep(fiber));
+        } else {
+          newFiber = createFiber(child, index, oldFiberSibling, fiber);
+          newFiber.return = fiber;
+          // console.warn('自己没更新，儿子需要更新', newFiber);
+        }
         // newFiber = oldFiberSibling
       }
     } else if (!oldFiberSibling) {
       const flags = getFlags(fiber)
       newFiber = createFiber(child, index, oldFiberSibling, fiber);
-      if (flags === PLACEMENT) {
-        setFiberWithFlags(newFiber, flags)
-      }
+      setFiberWithFlags(newFiber, flags)
       // console.log('新建', flags === PLACEMENT ? 'PLACEMENT' : 'NOEFFECT', newFiber)
     } else if (oldFiberSibling) {
       // oldFiberSibling.flags |= DELETE;
@@ -89,16 +91,17 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
   }
 
   if (
-    fiber.alternate && 
-    isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps)
+    fiber.lanes === NOLANE && 
+    fiber.childLanes === NOLANE &&
+    (!fiber.alternate || isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps))
  ) {
     if (fiber.childLanes === NOLANE && fiber.lanes === NOLANE) {
-      console.log('跳过beginWork', fiber)
+      isInDebugger && console.log('跳过beginWork', fiber)
       return null;
     }
  }
 
-  console.warn('beginWork', _.cloneDeep(fiber))
+ isInDebugger && console.warn('beginWork', _.cloneDeep(fiber))
 
 
   // if (fiber.alternate) {
@@ -110,6 +113,7 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     const preFiber = currentlyFiber;
     currentlyFiber = fiber;
     const elements = (fiber.type as Function)(fiber.pendingProps);
+    // console.log({ elements })
     const next = reconcileChildren(fiber, [elements]);
     currentlyFiber = preFiber;
     return next;
@@ -128,10 +132,38 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
   return next;
 }
 
+export function getRootFiber(fiber: MyFiber): MyFiber {
+  return fiber.return ? getRootFiber(fiber.return) : fiber
+}
+
+export function sumbitEffect(fiber: MyFiber) {
+  if ((fiber.flags & EFFECTHOOK) && (fiber.tag !== ROOTCOMPONENT) ) {
+      const parentFiber = getRootFiber(fiber);
+      // 递归上传effect
+      if (fiber.updateQueue.lastEffect) {
+         if (!parentFiber.updateQueue.lastEffect) {
+            parentFiber.updateQueue.firstEffect = fiber.updateQueue.firstEffect
+         } else {
+          parentFiber.updateQueue.lastEffect.next = fiber.updateQueue.firstEffect
+         }
+         parentFiber.updateQueue.lastEffect = fiber.updateQueue.lastEffect;
+         fiber.updateQueue.lastEffect = null;
+         fiber.updateQueue.firstEffect = null;
+         fiber.flags &= ~EFFECTHOOK
+     }
+
+  }
+}
+
 export function completeWork(fiber: MyFiber) {
   fiber.memoizedProps = fiber.pendingProps;
   if (fiber && isHostComponent(fiber) && !fiber.stateNode) {
     createDom(fiber);
+  }
+ 
+  if (fiber.ref && (!fiber.alternate || fiber.ref !== fiber.alternate.ref)) {
+    // console.log('ref变更', fiber);
+    setFiberWithFlags(fiber, REFEFFECT)
   }
 
   const parentFiber = fiber.return;
@@ -144,10 +176,11 @@ export function completeWork(fiber: MyFiber) {
     parentFiber.lastEffect = fiber.lastEffect;
     fiber.firstEffect = null;
     fiber.lastEffect = null;
+    fiber.nextEffect = null;
   }
 
 
-  if (fiber.lanes > NOLANE) {
+  if (fiber.lanes > NOLANE && fiber.tag !== ROOTCOMPONENT) {
     const parentFiber = fiber.return;
     if (parentFiber.lastEffect) {
       parentFiber.lastEffect.nextEffect = fiber;
@@ -156,15 +189,16 @@ export function completeWork(fiber: MyFiber) {
     }
     parentFiber.lastEffect = fiber;
   }
-  console.error('completeWork', _.cloneDeep(fiber));
+
+  sumbitEffect(fiber);
+  isInDebugger && console.error('completeWork', _.cloneDeep(fiber));
+  fiber.lanes = NOLANE;
+  fiber.childLanes = NOLANE;
+
 }
 
 export function setFiberWithFlags(fiber: MyFiber, flags: number) {
-  console.error('添加', fiber, {
-    [PLACEMENT]: 'PLACEMENT',
-    [DELETE]: 'DELETE',
-    [UPDATE]: 'UPDATE'
-  }[flags])
+  isInDebugger &&  console.error('添加', fiber, logEffectType(fiber))
   fiber.flags |= flags;
   fiber.lanes |= DEFAULTLANE;
   let currentFiber = fiber.return;
@@ -207,6 +241,7 @@ export function useState<T>(x: IStateParams<T>) : [T, (x: IStateParams<T>) => vo
     fiber,
     dispatchAction: (x: IDispatchValue<T>) => {
       updateList.push(x);
+      // console.error('setState', newHook.fiber)
       setFiberWithFlags(newHook.fiber, UPDATE)
       if (!getBatchUpdating()) {
         ensureRootIsScheduled()
@@ -216,4 +251,61 @@ export function useState<T>(x: IStateParams<T>) : [T, (x: IStateParams<T>) => vo
    hookIndex++
    fiber.hook.push(newHook)
    return  [newHook.memoizeState, newHook.dispatchAction] as [T, (x: IStateParams<T>) => void];
+}
+
+export function pushEffect(fiber: MyFiber, newHook: IEffectHook) {
+ if (!fiber.updateQueue.lastEffect) {
+  fiber.updateQueue.firstEffect = newHook;
+} else {
+  fiber.updateQueue.lastEffect.next = newHook;
+}
+fiber.updateQueue.lastEffect = newHook;
+setFiberWithFlags(fiber, EFFECTHOOK);
+// console.log('打上EffectFiber', fiber)
+}
+
+let effectId = 0;
+export function useEffect(create: () => (() => void) | void, deps: unknown[]) {
+  const fiber: MyFiber = currentlyFiber;
+  if (fiber.alternate) {
+    const hook = fiber.hook[hookIndex++] as IEffectHook;
+    if (!isDepEqual(hook.deps, deps)) {
+      hook.create = create;
+      hook.deps = deps;
+      pushEffect(fiber, hook);
+
+      // 需要更新。 需要更新的effect。应该放在updateQueue。
+    }
+    return;
+  }
+  // 执行时机不对。应该是先存起来。
+  // // create执行时机应该是在commit之后。
+  // const destroy = create()
+  const newHook: IEffectHook = {
+    id: effectId ++,
+    tag: 1, // TODO,
+    create,
+    destroy: null,
+    deps,
+    next: null
+  }
+   // 首次进来必定需要更新。
+  pushEffect(fiber, newHook)
+  fiber.hook.push(newHook)
+}
+
+
+export function useRef<T>(x: T): Readonly<{ current: T}> {
+  const fiber: MyFiber = currentlyFiber;
+  if (fiber.alternate) {
+    const hook = fiber.hook[hookIndex++] as IRefHook;
+    return hook.memoizeState
+  }
+  const newHook: IRefHook = {
+    memoizeState: {
+      current: x
+    }
+  }
+  fiber.hook.push(newHook)
+  return newHook.memoizeState
 }

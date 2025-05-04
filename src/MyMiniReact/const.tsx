@@ -1,17 +1,38 @@
 import _ from "lodash";
 import { MyFiber, MyFiberRoot } from "./type";
+import { getUUID } from "./utils";
 
-export const PLACEMENT = 0b00001;
 
-export const UPDATE = 0b00010;
+export const MyReactFiberKey = getUUID('__MyReactFiber__');
 
-export const DELETE = 0b00100;
+export const isInDebugger = false;
+
+export const PLACEMENT = 0b00000001;
+
+export const UPDATE = 0b00000010;
+
+export const DELETE = 0b00000100;
+
+export const EFFECTHOOK = 0b00001000;
+
+export const REFEFFECT = 0b00010000;
 
 export const NOEFFECT = 0b00000;
 
-export const NOCONTEXT = 0b00000;
+export const EffECTDicts = {
+  [PLACEMENT]: 'placement',
+  [DELETE]: 'delete',
+  [UPDATE]: 'update',
+  [NOEFFECT]: 'noEffect',
+  [EFFECTHOOK]: 'effectHook',
+  [REFEFFECT]: 'refEffect'
+};
 
-export const EVENTCONTEXT = 0b00001;
+
+
+// export const NOCONTEXT = 0b00000;
+
+// export const EVENTCONTEXT = 0b00001;
 
 
 export const NOLANE = 0b00000;
@@ -29,11 +50,11 @@ export const HOSTCOMPONENT = 0b00001;
 
 export const FUNCTIONCOMPONENT = 0b00010;
 
-let globalContextFlags: number = NOCONTEXT;
+// let globalContextFlags: number = NOCONTEXT;
 
-function addContextFlags(flag: number) {
-  globalContextFlags |= flag;
-}
+// function addContextFlags(flag: number) {
+//   globalContextFlags |= flag;
+// }
 
 let batchUpdating = false;
 
@@ -45,20 +66,20 @@ export function getBatchUpdating() {
   return batchUpdating;
 }
 
-export function getContextFlags() {
-  return globalContextFlags;
-}
+// export function getContextFlags() {
+//   return globalContextFlags;
+// }
 
-function removeContextFlags(flag: number) {
-  globalContextFlags &= ~flag;
-}
+// function removeContextFlags(flag: number) {
+//   globalContextFlags &= ~flag;
+// }
 
-export function runInContextFlags(cb: () => void, flag: number) {
-  const preContext = getContextFlags();
-  addContextFlags(flag);
-  cb()
-  removeContextFlags(preContext)
-}
+// export function runInContextFlags(cb: () => void, flag: number) {
+//   const preContext = getContextFlags();
+//   addContextFlags(flag);
+//   cb()
+//   removeContextFlags(preContext)
+// }
 
 export let workInProgress: MyFiber | null = null;
 

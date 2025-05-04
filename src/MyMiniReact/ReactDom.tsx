@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { NOEFFECT, ROOTCOMPONENT, rootFiber, setFiberRoot, setWipRoot, setWorkInProgress } from "./const";
+import { DEFAULTLANE, getBatchUpdating, isInDebugger, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setBatchUpdating, setFiberRoot, setWipRoot, setWorkInProgress } from "./const";
 import { createFiber, workLoop } from "./fiber";
 import { MyElement, MyFiber, MyStateNode, MyTask } from "./type";
 
@@ -7,6 +7,9 @@ import { MyElement, MyFiber, MyStateNode, MyTask } from "./type";
 export const taskQueue: MyTask[] = [];
 
 export function ensureRootIsScheduled() {
+  if (rootFiber && rootFiber.lanes === NOLANE && rootFiber.childLanes === NOLANE) {
+    return;
+  }
    const wipRoot = createFiber({
     type: 'root',
     props: {
@@ -15,7 +18,7 @@ export function ensureRootIsScheduled() {
     key: null,
     ref: null
   }, 0, rootFiber, null, ROOTCOMPONENT)
-  console.log( _.cloneDeep({
+  isInDebugger && console.log( _.cloneDeep({
     wipRoot,
     rootFiber
    }))
@@ -29,9 +32,22 @@ export function scheduleRootFiber(rootFiber3: MyFiber) {
 }
 
 
+export function runInBatchUpdate(cb: () => void) {
+  const preBol = getBatchUpdating()
+   setBatchUpdating(true)
+  const ret =  cb()
+  setBatchUpdating(preBol)
+ if (!preBol) {
+   ensureRootIsScheduled()
+ }
+ return ret;
+}
+
+
 export function createRoot(rootNode: MyStateNode) {
   return {
     render: (element: MyElement) => {
+      // console.log('element', { element})
       const rootFiber2 = createFiber({
         type: 'root',
         props: {
@@ -39,8 +55,8 @@ export function createRoot(rootNode: MyStateNode) {
         },
         key: null,
         ref: null
-      }, NOEFFECT, null, null, ROOTCOMPONENT);
-
+      }, 0, null, null, ROOTCOMPONENT);
+      rootFiber2.lanes = DEFAULTLANE;
       setFiberRoot({
         stateNode: rootNode,
         current: rootFiber2

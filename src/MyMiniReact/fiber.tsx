@@ -8,6 +8,7 @@ import { getPropsByElement, isStringOrNumber } from "./utils";
 
 let id = 0;
 export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null, parentFiber: MyFiber | null, tag?: number) {
+  // console.error(element);
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id ++,
     pendingProps: getPropsByElement(element),
@@ -23,13 +24,17 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     elementType: element?.type,
     firstEffect: null,
     hook: [],
+    updateQueue: {
+      firstEffect: null,
+      lastEffect: null,
+    },
     index,
     key: element?.key,
     lastEffect: null,
     memoizedProps: {},
     memoizedState: null,
     nextEffect: null,
-    ref: element?.props?.ref,
+    ref: element?.ref,
     return: parentFiber,
     sibling: null,
   }
@@ -43,11 +48,16 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
+    newFiber.updateQueue.firstEffect = null;
+    newFiber.updateQueue.lastEffect = null;
     newFiber.hook = alternateFiber.hook;
     newFiber.stateNode = alternateFiber.stateNode;
     newFiber.child = alternateFiber.child;
     newFiber.sibling = alternateFiber.sibling;
 
+
+    alternateFiber.updateQueue.firstEffect = null;
+    alternateFiber.updateQueue.lastEffect = null;
     alternateFiber.hook  = [];
     alternateFiber.memoizedProps = alternateFiber.pendingProps;
     alternateFiber.pendingProps = {};

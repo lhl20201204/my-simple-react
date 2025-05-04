@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { MyElement, MyFiber, MyProps } from "./type";
 import { IRenderNode, renderTree } from "../View";
+import { EffECTDicts } from "./const";
 
 const joinSign = '#######';
 
@@ -42,7 +43,6 @@ export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
     throw '类型错误'
   }
 
-
   const keys = _.keys(obj1);
   if (_.size(keys) !== _.size(_.keys(obj2))) {
     return false;
@@ -53,6 +53,32 @@ export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
     }
   }
   return true;
+}
+
+export function isDepEqual(dep1: Array<any> | null, dep2: Array<any> | null) {
+  const len1 = _.size(dep1);
+  const len2 = _.size(dep2);
+  if (len1 !== len2 || _.isNil(dep1)) {
+    // 长度不同，或者都为null
+    return false
+  }
+  for(let i = 0; i< len1; i++) {
+    if (dep1[i] !== dep2[i]) {
+      return false;
+    }
+  }
+  return true
+}
+
+export function logEffectType(fiber: MyFiber) {
+
+  const ret = []
+  _.forEach(EffECTDicts, (v, k) => {
+    if (fiber.flags & Number(k)) {
+      ret.push(v)
+    }
+  })
+  return ret.join(',')
 }
 
 export function logFiberTree(fiber: MyFiber) {
@@ -73,6 +99,9 @@ export function logFiberTree(fiber: MyFiber) {
       name: `${f.id}(${name})`,
       children: []
     }
+    // if (f.id === 10) {
+    //   console.log(_.cloneDeep(f))
+    // }
     let first = f.child;
     while(first) {
       const n = dfs(first);

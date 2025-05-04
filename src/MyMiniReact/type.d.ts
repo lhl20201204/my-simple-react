@@ -60,6 +60,7 @@ export type IStateParams<T> = (T | (() => T));
 
 export type IDispatchValue<T> = (T | ((c: T) => T));
 
+//TODO useState的结构改造.
 export type IStateHook<T> =  {
   fiber: MyFiber,
   memoizeState: T,
@@ -67,7 +68,28 @@ export type IStateHook<T> =  {
   dispatchAction: (x: IDispatchValue<T>) => void;
 }
 
-export type IHook =  IStateHook<any> | {
+// export type IStateHook = {
+//   memoizedState: any, // 当前状态值
+//   queue: UpdateQueue<any, any>, // 更新队列
+//   next: Hook | null, // 指向下一个 hook，形成链表
+// }
+
+export type IEffectHook = {
+  id: number, // 用于debugger
+  tag: number, // effect 类型，比如 EffectTag
+  create: () => (() => void) | void, // useEffect 的回调
+  destroy: (() => void) | void,      // 清理函数
+  deps: Array<any> | null,   // 依赖项
+  next: IEffectHook | null,  //           // 指向下一个 effect，形成链表
+}
+
+export type IRefHook = {
+  memoizeState: {
+    current: any
+  }
+}
+
+export type IHook = IEffectHook | IStateHook<any> | {
 }
 
 export type MyFiber = {
@@ -82,6 +104,10 @@ export type MyFiber = {
   lanes: number;
   childLanes: number;
   key: MyElmemetKey;
+  updateQueue: {
+    firstEffect: null | IEffectHook,
+    lastEffect: null | IEffectHook,
+  }
   lastEffect: MyFiber | null;
   hook: IHook[];
   memoizedProps: MyProps;
