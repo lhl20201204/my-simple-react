@@ -10,13 +10,21 @@ export function ensureRootIsScheduled() {
   if (rootFiber && rootFiber.lanes === NOLANE && rootFiber.childLanes === NOLANE) {
     return;
   }
+  rootFiber.updateQueue.firstEffect = null;
+  rootFiber.updateQueue.lastEffect = null;
+  
    const wipRoot = createFiber({
+    $$typeof: window.reactType,
     type: 'root',
     props: {
       children: rootFiber.pendingProps.children
     },
     key: null,
-    ref: null
+    ref: null,
+    _owner: null,
+    _store: {
+      validated: false
+    }
   }, 0, rootFiber, null, ROOTCOMPONENT)
   isInDebugger && console.log( _.cloneDeep({
     wipRoot,
@@ -49,12 +57,17 @@ export function createRoot(rootNode: MyStateNode) {
     render: (element: MyElement) => {
       // console.log('element', { element})
       const rootFiber2 = createFiber({
+        $$typeof: window.reactType,
         type: 'root',
         props: {
           children: element
         },
         key: null,
-        ref: null
+        ref: null,
+        _owner: null,
+        _store: {
+          validated: false
+        }
       }, 0, null, null, ROOTCOMPONENT);
       rootFiber2.lanes = DEFAULTLANE;
       setFiberRoot({

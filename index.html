@@ -1,49 +1,102 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <img id="source" src="./src/MyMiniReact/jsx.png" />
-    <canvas id="view" width="500" height="700"></canvas>
-<!-- <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-<script>
-   const App = () => {
-    React.useEffect(() => {
-      console.log('useEffect测试',  [document.getElementById('hhhhh')])
-    }, [])
-    const dom2 = React.createElement('span', {
-    children: 'hhh',
-    id: 'hhhhh'
-   });
-   console.log(dom2)
-    return dom2
-   }
-   const dom = React.createElement(App);
-   console.log(dom)
-   ReactDOM.render(React.createElement(() => {
-    return React.createElement('div', {
-      children: dom
-    })
-   }), document.getElementById('app'))
-</script> -->
-    <script type="module" src="/src/main.tsx"></script>
-    <style>
-       
-      #source {
-        width: 600px;
-        aspect-ratio:initial;
-      }
 
-      #view {
-        border: 1px solid gray;
-        margin-top: 20px;
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + TS</title>
+  <style>
+    #toggleParent{
+     display: flex;
+     width: 100%;
+     justify-content: center;
+    }
+
+    #toggle{
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid red;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="toggleParent">
+     <button id="toggle" onclick="toggle()">切换版本</button>
+  </div>
+
+  <div id="app"></div>
+  <!-- <img id="source" src="./src/MyMiniReact/jsx.png" /> -->
+  <canvas id="view" width="500" height="700"></canvas>
+  <script>
+    window.useSelfReact = !!(localStorage.getItem('useSelfReact')) ?? false;
+
+    function toggle() {
+      if (!window.useSelfReact) {
+        localStorage.setItem('useSelfReact', '1')
+      } else {
+        localStorage.removeItem('useSelfReact')
       }
-    </style>
-  </body>
+      location.reload()
+    }
+
+    document.getElementById('toggle').innerHTML = (!window.useSelfReact ? '目前使用的是官方正版' : '目前使用的是自定义版本') + ',点击切换'
+
+    window.deferPromise = new Promise((r) => {
+      window.promiseResolve = r;
+    }).then(() => {
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = "./src/main.tsx"
+      document.body.append(script)
+    })
+
+    window.deferPromise2 = new Promise((r) => {
+      window.promiseResolve2 = r;
+    })
+  </script>
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel" data-type="module" data-presets="typescript,react">
+    const innerDom = <div></div>;
+    window.reactType = innerDom.$$typeof;
+    // console.log(window.reactType)
+    window.promiseResolve()
+  </script>
+  <script type="text/babel" data-type="module" data-presets="typescript,react">
+    if (!window.useSelfReact) {
+      (async () => {
+        await window.deferPromise2;
+        // console.log(window.WindomDom)
+        ReactDOM.render(window.WindomDom, document.getElementById('app'))
+      })()
+    }
+  </script>
+  <!-- <script>
+    // 使用打包后的文件路径
+    fetch('./src/main.tsx')
+      .then(response => response.text())
+      .then(code => {
+        document.getElementById('code-display').textContent = code;
+      })
+      .catch(error => {
+        console.error('Error loading the file:', error);
+        document.getElementById('code-display').textContent = 'Error loading the file: ' + error.message;
+      });
+  </script> -->
+  <style>
+    #source {
+      width: 600px;
+      aspect-ratio: initial;
+    }
+
+    #view {
+      border: 1px solid gray;
+      margin-top: 20px;
+    }
+  </style>
+</body>
+
 </html>

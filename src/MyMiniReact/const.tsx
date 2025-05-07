@@ -19,6 +19,14 @@ export const REFEFFECT = 0b00010000;
 
 export const NOEFFECT = 0b00000;
 
+export const EFFECT_PASSIVE= 0b000001;
+
+export const EFFECT_LAYOUT= 0b000010;
+
+export const EFFECT_HOOK_HAS_EFFECT = 0b000100;
+
+export const EFFECT_DESTROY = 0b001000;
+
 export const EffECTDicts = {
   [PLACEMENT]: 'placement',
   [DELETE]: 'delete',
@@ -64,6 +72,20 @@ export function setBatchUpdating(bol: boolean) {
 
 export function getBatchUpdating() {
   return batchUpdating;
+}
+
+export const NO_CONTEXT = 0b0000000;
+export const DESTROY_CONTEXT = 0b0000001;
+export const CREATE_CONTEXT = 0b0000010;
+
+let currentContext: number = NO_CONTEXT;
+
+export function setCurrentContext(ctx: number) {
+  currentContext = ctx;
+}
+
+export function getCurrentContext(): number {
+  return currentContext
 }
 
 // export function getContextFlags() {

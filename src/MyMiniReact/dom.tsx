@@ -1,9 +1,7 @@
 import _ from "lodash";
 import { MyFiber } from "./type";
-import { getUUID } from "./utils";
 import { HOSTCOMPONENT, MyReactFiberKey } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
-import { getRootFiber } from "./render";
 
 export function isHostComponent(fiber: MyFiber) {
   return fiber.tag === HOSTCOMPONENT
@@ -80,7 +78,9 @@ export function updateDom(fiber: MyFiber) {
 
     if (dom) {
       if (fiber.type === 'text') {
-        dom.textContent = `${newProps}`;
+        if (!(_.isNil(newProps) || _.isBoolean(newProps))) {
+          dom.textContent = `${newProps}`;
+        }
         return;
       }
 
@@ -96,7 +96,7 @@ export function updateDom(fiber: MyFiber) {
           dom[key] = undefined;
         }
       });
-      Object.keys(newProps).forEach(key => {
+      Object.keys(newProps || {}).forEach(key => {
         if (key !== 'children' && newProps[key] !== oldProps[key]) {
           if (_.startsWith(key, 'on')) {
             // const fnKey = getKeys(key)
@@ -133,7 +133,7 @@ export function createDom(fiber: MyFiber) {
     return null;
   }
   if (fiber.type === 'text') {
-    fiber.stateNode = document.createTextNode(`${fiber.pendingProps}` as string);
+    fiber.stateNode = document.createTextNode(_.isNil(fiber.pendingProps) || _.isBoolean(fiber.pendingProps) ? '' : `${fiber.pendingProps}` as string);
     fiber.stateNode[MyReactFiberKey] = fiber;
     return fiber.stateNode;
   }

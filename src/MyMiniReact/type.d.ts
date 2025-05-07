@@ -19,21 +19,16 @@ export type MyElementType = 'root' | 'div' | 'text'  | 'span' | MyFunctionCompon
 
 export type MyElmemetKey = string | number | null | undefined
 export type MyElement = {
+  $$typeof: Symbol
   type: MyElementType;
   props: MyProps;
   key: MyElmemetKey;
   ref: null | MyRef;
+  _owner: null;
+  _store: {validated: false}
 };
 
 export type MyJSX = (props: MyProps, key: MyElmemetKey) => MyElement;
-
-declare namespace JSX {
-  interface IntrinsicElements {
-    [elemName: string]: {
-      [key: string]: any;
-    };
-  }
-}
 
 export type MyTask = {
   callback: () => void;
@@ -89,7 +84,12 @@ export type IRefHook = {
   }
 }
 
-export type IHook = IEffectHook | IStateHook<any> | {
+export type IMemoOrCallbackHook = {
+  memoizeState: any,
+  deps: any[]
+}
+
+export type IHook = IEffectHook | IStateHook<any> | IMemoOrCallbackHook | {
 }
 
 export type MyFiber = {

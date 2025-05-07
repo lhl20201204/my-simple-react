@@ -1,5 +1,3 @@
-import { MyElement, MyJSX } from "./type";
-
 declare namespace JSX {
   interface IntrinsicElements {
     [elemName: string]: {
@@ -7,11 +5,10 @@ declare namespace JSX {
     };
   }
   type Element = MyElement;
-
   interface IntrinsicAttributes {
     key?: string | number;
   }
+  interface ElementAttributesProperty {
+    props: {}; // 告诉TSX所有组件的props都可以有key
+  }
 }
-
-export type jsx = MyJSX;
-export type jsxs = MyJSX;

@@ -1,16 +1,31 @@
 import { MyElement, MyElementType, MyElmemetKey, MyRef } from "./type";
 import _ from "lodash";
 
+declare global {
+  interface Window {
+    WindomDom: any; // 你可以指定具体类型，比如 WindomDomType
+    reactType: any;
+    promiseResolve2: any;
+    useSelfReact: boolean;
+    React: any
+  }
+}
+
 export function jsxDev(
   type: MyElementType, 
   props: Record<string, unknown>,
   key: MyElmemetKey
 ): MyElement {
   return {
+    $$typeof: window.reactType,
     type,
     props: _.omit(props, 'ref'),
-    key,
-    ref: (props.ref ?? null) as MyRef
+    key: `${key}`,
+    ref: (props.ref ?? null) as MyRef,
+    _owner: null,
+    _store: {
+      validated: false
+    }
   };
 }
 

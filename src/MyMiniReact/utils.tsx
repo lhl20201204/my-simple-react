@@ -27,7 +27,7 @@ export function getUUID(str: string) {
 }
 
 export function isStringOrNumber(element: MyElement | null | MyProps) {
-  return _.isString(element) || _.isNumber(element) || _.isBoolean(element);
+  return _.isString(element) || _.isNumber(element) || _.isBoolean(element) || _.isNil(element);
 }
 
 export function getPropsByElement(element: MyElement): MyProps {

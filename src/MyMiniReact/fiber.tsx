@@ -48,16 +48,22 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
-    newFiber.updateQueue.firstEffect = null;
-    newFiber.updateQueue.lastEffect = null;
+
+    if ( alternateFiber.updateQueue.lastEffect) {
+      alternateFiber.updateQueue.lastEffect.next = null;
+    }
+    newFiber.updateQueue.firstEffect = alternateFiber.updateQueue.firstEffect;
+    newFiber.updateQueue.lastEffect = alternateFiber.updateQueue.lastEffect;
     newFiber.hook = alternateFiber.hook;
     newFiber.stateNode = alternateFiber.stateNode;
     newFiber.child = alternateFiber.child;
     newFiber.sibling = alternateFiber.sibling;
 
+    // console.log(_.cloneDeep({ newFiber }))
 
-    alternateFiber.updateQueue.firstEffect = null;
-    alternateFiber.updateQueue.lastEffect = null;
+
+    // alternateFiber.updateQueue.firstEffect = null;
+    // alternateFiber.updateQueue.lastEffect = null;
     alternateFiber.hook  = [];
     alternateFiber.memoizedProps = alternateFiber.pendingProps;
     alternateFiber.pendingProps = {};
