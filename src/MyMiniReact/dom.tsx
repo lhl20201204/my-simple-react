@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { MyFiber } from "./type";
-import { HOSTCOMPONENT, MyReactFiberKey } from "./const";
+import { HOSTCOMPONENT, isInDebugger, MyReactFiberKey } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
 
 export function isHostComponent(fiber: MyFiber) {
@@ -142,13 +142,16 @@ export function createDom(fiber: MyFiber) {
     fiber.stateNode = dom;
     updateDom(fiber);
     let f = fiber.child;
+    const ret = []
     while (f) {
       const childDom = findChildStateNode(f);
       if (childDom) {
         dom.appendChild(childDom)
+        ret.push(childDom)
       }
       f = f.sibling;
     }
+    isInDebugger &&  console.log(dom, '添加', ret)
     return dom;
   }
   return null;

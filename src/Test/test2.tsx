@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "./utils"
 
 function App2({ id, children }: {id: string, children?: any}) {
-  const [c, setC] = useState(1)
+  const [c, setC] = useState(1);
   Promise.resolve(0 + id).then(console.log)
   useEffect(() => {
     console.log(id + 'useEffect-create', c);
@@ -18,8 +18,9 @@ function App2({ id, children }: {id: string, children?: any}) {
     }
   }, [c])
   Promise.resolve(2 + id).then(console.log)
-  // console.log('render-App2' + id, children)
+  console.log('render-App2' + id, c)
   return <div onClick={() => {
+    console.log(id + '触发setState')
     setC(c + 1)
   }}>{id}有-&gt;&nbsp;{c}
   {children}
@@ -28,7 +29,7 @@ function App2({ id, children }: {id: string, children?: any}) {
 
 function App() {
   const [bol, setBol] = useState(true)
-
+  console.log('App-render')
   useEffect(() => {
     console.log('useEffect-App-create', bol);
     return () => {
@@ -43,12 +44,14 @@ function App() {
     }
   }, [bol])
 
-  return <div>{bol ? <App2 key={'A'} id={'A'} /> : <div key={'A_'}>空A</div>}
+  return <div ref={(x) => {
+    console.log([x])
+  }}>{bol ? <App2 key={'A'} id={'A'} /> : <div key={'A_'}>空A</div>}
   {bol ? <App2 key={'C'} id={'C'} /> : <div key={'C_'}>空C</div>}
     <button key={1} onClick={() => {
       setBol(!bol)
     }}>点击切换隐藏</button>
-    <App2 key={2} id={'B'} >
+    <App2 key={'B'} id={'B'} >
       <App2 key={'D'} id="D"></App2>
       <App2 key={'E'} id="E"></App2>
     </App2>

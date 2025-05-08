@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { MyElement, MyFiber, MyProps } from "./type";
 import { IRenderNode, renderTree } from "../View";
-import { EffECTDicts } from "./const";
+import { EFFECT_LAYOUT, EffECTDicts } from "./const";
 
 const joinSign = '#######';
 
@@ -35,6 +35,7 @@ export function getPropsByElement(element: MyElement): MyProps {
 }
 
 export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
+  return obj1 === obj2;
   if (isStringOrNumber(obj1)) {
     return obj1 === obj2;
   }
@@ -96,7 +97,9 @@ export function logFiberTree(fiber: MyFiber) {
     }
     const node: IRenderNode = {
       value: f.id,
-      name: `${f.id}(${name})`,
+      name: `${f.id}(${name})${
+        f.key ? `-【${f.key}】` : ''
+      }`,
       children: []
     }
     // if (f.id === 10) {
@@ -116,4 +119,18 @@ export function logFiberTree(fiber: MyFiber) {
   const dom = document.getElementById('view');
   // console.log(dom);
   renderTree(dom, dfs(fiber))
+}
+
+export function getEffectListId(fiber: MyFiber) {
+  let f = fiber.updateQueue?.firstEffect;
+  const ret = []
+  while(f) {
+    ret.push([f.id, f.tag & EFFECT_LAYOUT ? 'layout' : 'passive'].join('-'))
+    f = f.next;
+  }
+  return ret.join(',')
+}
+
+export function logFiberIdPath(fiber: MyFiber, ret = []) {
+  return fiber ? logFiberIdPath(fiber.return, [...ret, fiber.id,]) : ret.join('->');
 }

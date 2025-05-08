@@ -16,11 +16,12 @@ export function jsxDev(
   props: Record<string, unknown>,
   key: MyElmemetKey
 ): MyElement {
+  console.log({type, props, key})
   return {
     $$typeof: window.reactType,
     type,
     props: _.omit(props, 'ref'),
-    key: `${key}`,
+    key: _.isNil(key) ? key : `${key}`,
     ref: (props.ref ?? null) as MyRef,
     _owner: null,
     _store: {

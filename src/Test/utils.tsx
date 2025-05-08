@@ -2,7 +2,7 @@ import { MyUseEffect,  MyUseRef, MyUseState ,
    MyUseCallback,
   MyUseMemo,
   MyUseLayoutEffect
-} from '../MyMiniReact/render';
+} from '../MyMiniReact/beginWork';
 
 export const useEffect = window.useSelfReact ? MyUseEffect : window.React.useEffect;
 export const useRef = window.useSelfReact ? MyUseRef : window.React.useRef;

@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./render";
+import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
 import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber } from "./type";
 import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, EFFECTHOOK, getBatchUpdating, getCurrentContext, UPDATE } from "./const";
 import { ensureRootIsScheduled } from "./ReactDom";
@@ -14,6 +14,7 @@ export function MyUseState<T>(x: IStateParams<T>) : [T, (x: IDispatchValue<T>) =
      const h = hook.updateList.shift();
      hook.memoizeState = _.isFunction(h) ? h(hook.memoizeState) : h;
    }
+  //  console.log('拿到的', hook.memoizeState)
    hook.fiber = fiber;
    return [hook.memoizeState, hook.dispatchAction] as [T, (x: IStateParams<T>) => void];
   }

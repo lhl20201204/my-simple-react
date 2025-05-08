@@ -2,26 +2,29 @@ import _ from "lodash";
 import { commitRoot } from "./commit";
 import { FUNCTIONCOMPONENT, HOSTCOMPONENT, NOEFFECT, NOLANE, setWorkInProgress, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
-import { beginWork, completeWork } from "./render";
+import { beginWork } from "./beginWork";
 import { getPropsByElement, isStringOrNumber } from "./utils";
+import { completeWork } from "./completeWork";
 
 
 let id = 0;
-export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null, parentFiber: MyFiber | null, tag?: number) {
+export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null, 
+  tag?: number, isClone?: boolean) {
   // console.error(element);
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id ++,
-    pendingProps: getPropsByElement(element),
-    type: isStringOrNumber(element) ? 'text' : element?.type,
+    key: isClone ? alternateFiber.key : element?.key,
+    pendingProps: isClone ? alternateFiber.pendingProps : getPropsByElement(element),
+    type: isClone ? alternateFiber.type : (isStringOrNumber(element) ? 'text' : element?.type),
     flags: NOEFFECT,
     stateNode: null,
-    tag: tag ?? (typeof element?.type === 'function' ? FUNCTIONCOMPONENT : HOSTCOMPONENT),
+    tag: isClone ? alternateFiber.tag : (tag ?? (typeof element?.type === 'function' ? FUNCTIONCOMPONENT : HOSTCOMPONENT)),
     alternate: null,
     lanes: NOLANE,
     childLanes: NOLANE,
     child: null,
     dependencies: null,
-    elementType: element?.type,
+    elementType: isClone ? alternateFiber.elementType : element?.type,
     firstEffect: null,
     hook: [],
     updateQueue: {
@@ -29,31 +32,39 @@ export function createFiber(element: MyElement | null, index: number, alternateF
       lastEffect: null,
     },
     index,
-    key: element?.key,
     lastEffect: null,
     memoizedProps: {},
     memoizedState: null,
     nextEffect: null,
-    ref: element?.ref,
-    return: parentFiber,
+    ref: isClone ? alternateFiber.ref : element?.ref,
+    return: null,
     sibling: null,
   }
   newFiber.child = null;
   newFiber.sibling = null;
+  newFiber.index = index;
 
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
-    newFiber.pendingProps = getPropsByElement(element),
-    newFiber.ref = element?.ref;
+    newFiber.pendingProps = isClone ? alternateFiber.pendingProps  : getPropsByElement(element),
+    newFiber.ref = isClone ? alternateFiber.ref : element?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
 
-    if ( alternateFiber.updateQueue.lastEffect) {
-      alternateFiber.updateQueue.lastEffect.next = null;
-    }
+    // if (alternateFiber.updateQueue.lastEffect) {
+    //   if(alternateFiber.updateQueue.lastEffect.next ) {
+    //     console.log('fiber.next未断开', _.cloneDeep({updateQueue :alternateFiber.updateQueue, alternateFiber}))
+    //   }
+    // }
+    const endEffect = alternateFiber.updateQueue.lastEffect?.next ?? null;
+
     newFiber.updateQueue.firstEffect = alternateFiber.updateQueue.firstEffect;
-    newFiber.updateQueue.lastEffect = alternateFiber.updateQueue.lastEffect;
+    let f = newFiber.updateQueue.firstEffect;
+    while(f && f!== endEffect) {
+      newFiber.updateQueue.lastEffect = f;
+      f = f.next;
+    }
     newFiber.hook = alternateFiber.hook;
     newFiber.stateNode = alternateFiber.stateNode;
     newFiber.child = alternateFiber.child;
@@ -68,7 +79,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     alternateFiber.memoizedProps = alternateFiber.pendingProps;
     alternateFiber.pendingProps = {};
     alternateFiber.lanes = NOLANE;
-    alternateFiber.childLanes = NOLANE;
+    alternateFiber.childLanes = NOLANE;;
   }
 
   return newFiber;
