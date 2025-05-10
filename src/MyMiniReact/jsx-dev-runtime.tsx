@@ -11,15 +11,17 @@ declare global {
   }
 }
 
+// let id = 0;
 export function jsxDev(
   type: MyElementType, 
   props: Record<string, unknown>,
   key: MyElmemetKey
 ): MyElement {
-  console.log({type, props, key})
+  // console.log({type, props, key})
   return {
     $$typeof: window.reactType,
     type,
+    // id: id++,
     props: _.omit(props, 'ref'),
     key: _.isNil(key) ? key : `${key}`,
     ref: (props.ref ?? null) as MyRef,

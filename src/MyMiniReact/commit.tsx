@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, HOSTCOMPONENT, isInDebugger, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, HOSTCOMPONENT, isInDebugger, LAYOUT_EFFECT_HOOK, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { IEffectHook, MyFiber, MyStateNode } from "./type";
 import { isHostComponent, updateDom } from "./dom";
 import { getEffectListId, logEffectType, logFiberTree } from "./utils";
@@ -25,6 +25,7 @@ function getStateNode(fiber: MyFiber) {
 
 function commitDelete(fiber: MyFiber) {
   if (!fiber) return;
+  // console.log('删除', _.cloneDeep(fiber))
   // let f = fiber.child;
   // while (f) {
   //   commitDelete(f);
@@ -38,6 +39,14 @@ function commitDelete(fiber: MyFiber) {
       parentDom.removeChild(childDom);
     }
   }
+
+  handleLayoutEffectDestroy(fiber);
+  if (fiber.ref) {
+    commitRef(fiber, true)
+  }
+
+  fiber.updateQueue.lastEffect = null;
+  fiber.updateQueue.firstEffect = null
 
   // if (fiber.tag === FUNCTIONCOMPONENT) {
   //   if (fiber.updateQueue.lastEffect) {
@@ -56,7 +65,7 @@ function commitDelete(fiber: MyFiber) {
   // }
   fiber.stateNode = null;
 
-   fiber.return = null;
+  fiber.return = null;
 }
 
 function findHostStateNode(fiber: MyFiber, parentDom: HTMLElement): MyFiber | null | undefined {
@@ -105,14 +114,15 @@ function commitUpdate(fiber: MyFiber) {
   // }
 }
 
-function commitRef(fiber: MyFiber) {
+function commitRef(fiber: MyFiber, isDestroy: boolean) {
   if (isHostComponent(fiber) &&
     fiber.ref) {
     // console.log('触发', fiber)
+    const instance = isDestroy ? null : fiber.stateNode;
     if (_.has(fiber.ref, 'current')) {
-      fiber.ref.current = fiber.stateNode;
+      fiber.ref.current = instance;
     } else if (_.isFunction(fiber.ref)) {
-      fiber.ref(fiber.stateNode)
+      fiber.ref(instance)
     } else {
       throw '未处理'
     }
@@ -121,15 +131,53 @@ function commitRef(fiber: MyFiber) {
   }
 }
 
+function handleLayoutEffectDestroy(fiber: MyFiber) {
+  if (fiber.flags & LAYOUT_EFFECT_HOOK) {
+    let firstEffect = fiber.updateQueue.firstEffect;
+    const endEffect = fiber.updateQueue.lastEffect?.next ?? null;
+    while(firstEffect && firstEffect !== endEffect) {
+     // console.log('destroy', )
+     if ((firstEffect.tag & EFFECT_LAYOUT) & (EFFECT_HOOK_HAS_EFFECT | EFFECT_LAYOUT)) {
+       // firstEffect.tag &= ~EFFECT_HOOK_HAS_EFFECT;
+      //  console.log('删除')
+      if (_.isFunction(firstEffect.destroy)) {
+         firstEffect.destroy()
+      }
+     }
+     firstEffect = firstEffect.next;
+    }
+ }
+}
+
+function commitLayoutEffectOrRef(fiber: MyFiber) {
+  // console.log(_.cloneDeep({ fiber }))
+    if (fiber.flags & REFEFFECT) {
+      commitRef(fiber, false);
+    }
+    if (fiber.flags & LAYOUT_EFFECT_HOOK) {
+      let firstEffect = fiber.updateQueue.firstEffect;
+      const endEffect = fiber.updateQueue.lastEffect?.next ?? null;
+      // console.log(_.cloneDeep({ firstEffect, endEffect}))
+      while(firstEffect && firstEffect !== endEffect) {
+        // console.log('create', fiber.id,  (EFFECT_HOOK_HAS_EFFECT | EFFECT_LAYOUT), firstEffect.tag)
+       if ((firstEffect.tag & EFFECT_LAYOUT) & (EFFECT_HOOK_HAS_EFFECT | EFFECT_LAYOUT)) {
+         firstEffect.tag &= ~EFFECT_HOOK_HAS_EFFECT;
+         firstEffect.destroy = firstEffect.create()
+       }
+       firstEffect = firstEffect.next;
+      }
+   }
+}
+
 function commitWork(fiber: MyFiber) {
   if (!fiber || fiber.flags === NOEFFECT) return;
 
   // console.error('commitWork', logEffectType(fiber), _.cloneDeep(fiber));
 
-  if (fiber.flags & DELETE) {
-    commitDelete(fiber);
-    fiber.flags &= ~DELETE
-  }
+  // if (fiber.flags & DELETE) {
+  //   commitDelete(fiber);
+  //   fiber.flags &= ~DELETE
+  // }
 
   if (fiber.flags & PLACEMENT) {
     commitPlacement(fiber);
@@ -140,14 +188,9 @@ function commitWork(fiber: MyFiber) {
     fiber.flags &= ~UPDATE
   }
 
-  if (fiber.flags & REFEFFECT) {
-    commitRef(fiber)
-    fiber.flags &= ~REFEFFECT
-  }
-
-  if (fiber.flags !== NOEFFECT) {
-    console.warn(fiber, 'fiberflags没清空');
-  }
+  // if (fiber.flags !== NOEFFECT) {
+  //   console.warn(fiber, 'fiberflags没清空');
+  // }
 }
 
 const messageChanel = new MessageChannel();
@@ -220,17 +263,51 @@ export function commitRoot() {
   let firstEffect = wipRoot.firstEffect;
 
   // console.error('commitRoot', _.cloneDeep({wipRoot, firstEffect, lastEffect: wipRoot.lastEffect}))
-  const idList = []
+  // const idList = []
   const endEffect = wipRoot.lastEffect?.nextEffect ?? null
+
+  // for (const x of deletions) {
+  //   commitDelete(x)
+  // }
   while (firstEffect && firstEffect !== endEffect) {
-    idList.push([firstEffect.id ,_.cloneDeep(firstEffect)])
+    // idList.push([firstEffect.id ,_.cloneDeep(firstEffect)])
     commitWork(firstEffect);
+
     firstEffect = firstEffect.nextEffect;
   }
+
+  runInBatchUpdate(() => {
+    let firstEffect = wipRoot.firstEffect;
+    const endEffect = wipRoot.lastEffect?.nextEffect ?? null;
+
+    while(deletions.length) {
+      commitDelete(deletions.shift())
+    }
+
+    while (firstEffect && firstEffect !== endEffect) {
+      if (firstEffect.flags & REFEFFECT) {
+        if (firstEffect.alternate) {
+          commitRef(firstEffect, true)
+        }
+      }
+      handleLayoutEffectDestroy(firstEffect);
+      firstEffect = firstEffect.nextEffect;
+    }
+    firstEffect = wipRoot.firstEffect;
+    while (firstEffect && firstEffect !== endEffect) {
+      const fiber = firstEffect;
+      if (fiber.flags & (REFEFFECT | LAYOUT_EFFECT_HOOK)) {
+      commitLayoutEffectOrRef(fiber);
+      fiber.flags &= ~REFEFFECT
+      fiber.flags &= ~LAYOUT_EFFECT_HOOK
+    }
+
+      firstEffect = firstEffect.nextEffect;
+    }
+  })
+
+
   // console.log(_.cloneDeep({idList, firstEffect, lastEffect: wipRoot.lastEffect}))
-  while (deletions.length) {
-    commitWork(deletions.shift())
-  }
   wipRoot.firstEffect = null;
   wipRoot.lastEffect = null;
   wipRoot.nextEffect = null; // TODO 处理每个fiber的nextEffect
@@ -239,7 +316,7 @@ export function commitRoot() {
   // console.log('commitRoot---> start')
   
   // console.warn('useLayoutEffectBefore', getEffectListId(rootFiber));
-  handleEffect(EFFECT_LAYOUT, rootFiber.updateQueue.firstEffect, rootFiber.updateQueue.lastEffect?.next ?? null);
+  // handleEffect(EFFECT_LAYOUT, rootFiber.updateQueue.firstEffect, rootFiber.updateQueue.lastEffect?.next ?? null);
   // rootFiber.updateQueue.firstEffect = f;
   // rootFiber.updateQueue.lastEffect = l;
   // console.warn('useLayoutEffectAfter', _.cloneDeep({ rootFiber }), getEffectListId(rootFiber));

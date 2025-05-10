@@ -1,9 +1,24 @@
 import _ from "lodash";
-import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
+import { addHookIndex, currentlyFiber, getRootFiber, setFiberWithFlags } from "./beginWork";
 import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber } from "./type";
-import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, EFFECTHOOK, getBatchUpdating, getCurrentContext, UPDATE } from "./const";
+import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, EFFECTHOOK, getBatchUpdating, getCurrentContext, LAYOUT_EFFECT_HOOK, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot } from "./const";
 import { ensureRootIsScheduled } from "./ReactDom";
 import { isDepEqual } from "./utils";
+
+function findTagFiber(fiber: MyFiber, parentFiber: MyFiber) {
+  let f = parentFiber.child;
+  while(f) {
+    if (fiber === f || (fiber.alternate && fiber.alternate === f)) {
+      return f
+    }
+    const ret = findTagFiber(fiber, f);
+    if (ret) {
+      return ret;
+    }
+    f = f.sibling;
+  }
+  return null;
+}
 
 export function MyUseState<T>(x: IStateParams<T>) : [T, (x: IDispatchValue<T>) => void] {
   const fiber = currentlyFiber;
@@ -15,25 +30,30 @@ export function MyUseState<T>(x: IStateParams<T>) : [T, (x: IDispatchValue<T>) =
      hook.memoizeState = _.isFunction(h) ? h(hook.memoizeState) : h;
    }
   //  console.log('拿到的', hook.memoizeState)
-   hook.fiber = fiber;
+  //  hook.fiber = fiber;
    return [hook.memoizeState, hook.dispatchAction] as [T, (x: IStateParams<T>) => void];
   }
 
+  const originRootFiber = wipRoot;
   let v: T = _.isFunction(x) ? x() : x;
-
   const updateList: IDispatchValue<T>[] = []
   const newHook: IStateHook<T> = {
    memoizeState: v,
    updateList,
-   fiber,
    dispatchAction: (x: IDispatchValue<T>) => {
-    if (!(newHook.fiber.flags & UPDATE) && getCurrentContext() !== DESTROY_CONTEXT) {
+    const currentRootFiber = getRootFiber(fiber);
+    if (currentRootFiber.tag !== ROOTCOMPONENT) {
+      // console.warn('组件已经卸载')
+      return;
+    }
+    const currentFiber = rootFiber ? findTagFiber(fiber, rootFiber) : fiber;
+    if (!(currentFiber.flags & UPDATE) && getCurrentContext() !== DESTROY_CONTEXT) {
       newHook.memoizeState = _.isFunction(x) ? x(newHook.memoizeState) : x;
     } else {
       updateList.push(x);
     }
      // console.error('setState', newHook.fiber)
-     setFiberWithFlags(newHook.fiber, UPDATE)
+     setFiberWithFlags(currentFiber, UPDATE)
      if (!getBatchUpdating()) {
        ensureRootIsScheduled()
      }
@@ -56,7 +76,9 @@ fiber.updateQueue.lastEffect = newHook;
 
 let effectId = 0;
 
-export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE) => {
+export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
+  flags: typeof EFFECTHOOK | typeof LAYOUT_EFFECT_HOOK
+) => {
  return function useEffect(create: () => (() => void) | void, deps: unknown[]) {
    const fiber: MyFiber = currentlyFiber;
    if (fiber.alternate) {
@@ -65,7 +87,7 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE) =
        hook.create = create;
        hook.deps = deps;
        hook.tag |= EFFECT_HOOK_HAS_EFFECT;
-       setFiberWithFlags(fiber, EFFECTHOOK);
+       setFiberWithFlags(fiber, flags);
       //  console.log(_.cloneDeep({ fiber}))
        // pushEffect(fiber, hook);
  
@@ -86,14 +108,15 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE) =
    }
     // 首次进来必定需要更新。
    pushEffect(fiber, newHook)
-   setFiberWithFlags(fiber, EFFECTHOOK);
+   setFiberWithFlags(fiber, flags);
+  //  console.log(fiber, '打上fiber', flags, newHook.tag);
    fiber.hook.push(newHook)
  }
 }
 
-export const MyUseEffect = getEffectFn(EFFECT_PASSIVE);
+export const MyUseEffect = getEffectFn(EFFECT_PASSIVE, EFFECTHOOK);
 
-export const MyUseLayoutEffect = getEffectFn(EFFECT_LAYOUT);
+export const MyUseLayoutEffect = getEffectFn(EFFECT_LAYOUT, LAYOUT_EFFECT_HOOK);
 
 
 export function MyUseRef<T>(x: T): Readonly<{ current: T}> {

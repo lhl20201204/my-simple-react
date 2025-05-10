@@ -57,7 +57,6 @@ export type IDispatchValue<T> = (T | ((c: T) => T));
 
 //TODO useState的结构改造.
 export type IStateHook<T> =  {
-  fiber: MyFiber,
   memoizeState: T,
   updateList: IDispatchValue<T>[],
   dispatchAction: (x: IDispatchValue<T>) => void;

@@ -11,7 +11,7 @@ export function ensureRootIsScheduled() {
   // console.log(_.cloneDeep({
   //   rootFiber
   // }))
-  if ((rootFiber && rootFiber.lanes === NOLANE && rootFiber.childLanes === NOLANE)) {
+  if (!rootFiber || ( rootFiber.lanes === NOLANE && rootFiber.childLanes === NOLANE)) {
     return;
   }
   // rootFiber.updateQueue.firstEffect = null;

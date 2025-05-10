@@ -15,7 +15,9 @@ export const DELETE = 0b00000100;
 
 export const EFFECTHOOK = 0b00001000;
 
-export const REFEFFECT = 0b00010000;
+export const LAYOUT_EFFECT_HOOK = 0b00010000;
+
+export const REFEFFECT = 0b00100000;
 
 export const NOEFFECT = 0b00000;
 
@@ -33,7 +35,8 @@ export const EffECTDicts = {
   [UPDATE]: 'update',
   [NOEFFECT]: 'noEffect',
   [EFFECTHOOK]: 'effectHook',
-  [REFEFFECT]: 'refEffect'
+  [REFEFFECT]: 'refEffect',
+  [LAYOUT_EFFECT_HOOK]: 'layoutEffectHook'
 };
 
 

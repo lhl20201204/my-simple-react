@@ -19,6 +19,18 @@ function App() {
   const dom = useMemo(() => {
     return <App2 id={'9'} key={9}></App2>
   }, [])
+
+  useEffect(() => {
+    setTimeout(() => {
+      setArr([5, 7, 8, 1, 3])
+      setTimeout(() => {
+        setArr([1, 2, 3, 4,5])
+      }, 3000);
+    }, 3000);
+  }, [])
+
+
+  
   return <div>
     <button key={1} onClick={() => {
       setArr([3, 1, 5])

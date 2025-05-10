@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECTHOOK, isInDebugger, NOLANE, REFEFFECT, ROOTCOMPONENT } from "./const";
+import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_PASSIVE, EFFECTHOOK, isInDebugger, LAYOUT_EFFECT_HOOK, NOLANE, REFEFFECT, ROOTCOMPONENT } from "./const";
 import { createDom, isHostComponent } from "./dom";
 import { getRootFiber } from "./beginWork";
 import { MyFiber } from "./type";
@@ -7,7 +7,11 @@ import { MyFiber } from "./type";
 export function sumbitEffect(fiber: MyFiber) {
   const hasEffectBol = (fiber.flags & EFFECTHOOK);
   const deleteBol = (fiber.flags & DELETE);
-  // console.log(deleteBol, _.cloneDeep(fiber));
+
+  if (deleteBol) {
+    fiber.flags |= LAYOUT_EFFECT_HOOK
+  }
+
   if ((hasEffectBol || deleteBol) && (fiber.tag !== ROOTCOMPONENT)) {
     const parentFiber = getRootFiber(fiber);
     // 递归上传effect
@@ -18,10 +22,10 @@ export function sumbitEffect(fiber: MyFiber) {
     // }
     while (f && f!== endEffect) {
 
-      if ((f.tag & EFFECT_HOOK_HAS_EFFECT) || deleteBol) {
+      if ((f.tag & (EFFECT_HOOK_HAS_EFFECT | EFFECT_PASSIVE)) || deleteBol) {
         if (deleteBol) { 
           // console.log('删除进来')
-          f.tag |= EFFECT_DESTROY
+          f.tag |= EFFECT_DESTROY | EFFECT_HOOK_HAS_EFFECT
         };
         if (!parentFiber.updateQueue.lastEffect) {
           parentFiber.updateQueue.firstEffect = f
@@ -29,12 +33,12 @@ export function sumbitEffect(fiber: MyFiber) {
           parentFiber.updateQueue.lastEffect.next = f
         }
         parentFiber.updateQueue.lastEffect = f;
-        f.tag &= ~EFFECT_HOOK_HAS_EFFECT
-        if (deleteBol) {
-          // console.log('删除充值')
-         fiber.updateQueue.lastEffect = null;
-         fiber.updateQueue.firstEffect = null
-        }
+        // f.tag &= ~EFFECT_HOOK_HAS_EFFECT
+        // if (deleteBol) {
+        //   // console.log('删除充值')
+        //  fiber.updateQueue.lastEffect = null;
+        //  fiber.updateQueue.firstEffect = null
+        // }
       }
       f = f.next
     }

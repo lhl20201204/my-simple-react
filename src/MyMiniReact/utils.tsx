@@ -97,9 +97,7 @@ export function logFiberTree(fiber: MyFiber) {
     }
     const node: IRenderNode = {
       value: f.id,
-      name: `${f.id}(${name})${
-        f.key ? `-【${f.key}】` : ''
-      }`,
+      name: `${f.id}(${name})`,
       children: []
     }
     // if (f.id === 10) {

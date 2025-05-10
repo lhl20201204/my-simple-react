@@ -75,6 +75,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
 
     // alternateFiber.updateQueue.firstEffect = null;
     // alternateFiber.updateQueue.lastEffect = null;
+    alternateFiber.alternate = newFiber;
     alternateFiber.hook  = [];
     alternateFiber.memoizedProps = alternateFiber.pendingProps;
     alternateFiber.pendingProps = {};

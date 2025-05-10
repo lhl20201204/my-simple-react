@@ -23,8 +23,12 @@ function getFlags(fiber: MyFiber) {
   return (parent && (parent.flags & PLACEMENT)) ? NOEFFECT : PLACEMENT;
 }
 
-function findFiberByKeyAndType(list: MyFiber[], type: MyElementType, key?: MyElmemetKey) {
-   const index = list.findIndex(c => c.key === key && c.type === type);
+function canDiff(fiber: MyFiber, child?: MyElement) {
+  return (fiber.key === child?.key && fiber.type === child?.type) || (fiber.type === 'text' && isStringOrNumber(child))
+}
+
+function findFiberByKeyAndType(list: MyFiber[], child?: MyElement) {
+   const index = list.findIndex(c => canDiff(c, child));
    return index > -1 ? list.splice(index, 1)[0] : null;
 }
 
@@ -45,10 +49,8 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
   while (index < children.length || totalFiberList.length) {
     const child = children[index];
     let oldFiberSibling: MyFiber | null = index < children.length ?
-     findFiberByKeyAndType(totalFiberList, child?.type, child?.key) : totalFiberList.shift()
-    const isSameType = oldFiberSibling && ((oldFiberSibling.type === child?.type &&
-      oldFiberSibling.key === child?.key)
-      || (oldFiberSibling.type === 'text' && isStringOrNumber(child)))
+     findFiberByKeyAndType(totalFiberList, child) : totalFiberList.shift()
+    const isSameType = oldFiberSibling && canDiff(oldFiberSibling, child)
     let newFiber: MyFiber | null = null;
 
     // console.log(_.cloneDeep({
@@ -189,14 +191,15 @@ function dfsSumbitEffect(fiber: MyFiber) {
   if (!fiber) {
     return;
   }
+  setFiberWithFlags(fiber, DELETE);
+  deletions.push(fiber);
+  sumbitEffect(fiber)
+  
   let f = fiber.child;
   while(f) {
     dfsSumbitEffect(f);
     f = f.sibling;
   }
-  setFiberWithFlags(fiber, DELETE);
-  deletions.push(fiber);
-  sumbitEffect(fiber)
 }
 
 
