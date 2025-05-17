@@ -1,9 +1,10 @@
 import _ from "lodash";
-import { DEFAULTLANE, DELETE, deletions, FUNCTIONCOMPONENT, isInDebugger, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, UPDATE } from "./const";
+import { DEFAULTLANE, DELETE, deletions, FUNCTIONCOMPONENT, getBatchUpdating, isInDebugger, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, setBatchUpdating, UPDATE, workInProgress } from "./const";
 import { createFiber } from "./fiber";
 import { MyElement, MyElementType, MyElmemetKey, MyFiber } from "./type";
 import { getPropsByElement, isPropsEqual, isStringOrNumber, logEffectType } from "./utils";
 import { sumbitEffect } from "./completeWork";
+import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 
 export * from './hook'
 
@@ -123,7 +124,12 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
   return fiber.child;
 }
 
+// let debugggerIndex  =0;
 export function beginWork(fiber: MyFiber): MyFiber | null {
+  // console.log('enter---->beginWork', fiber)
+  // if (fiber.id === 5) {
+  //   console.trace()
+  // }
   if (!fiber) {
     return null;
   }
@@ -133,7 +139,7 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     (!fiber.alternate || isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps))
   ) {
     if (fiber.childLanes === NOLANE) {
-     isInDebugger && console.log('所有子树跳过beginWork', _.cloneDeep(fiber))
+      // console.log('所有子树跳过beginWork', _.cloneDeep(fiber))
       return null;
     } 
   }
@@ -158,14 +164,29 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
 
     hookIndex = 0;
     const preFiber = currentlyFiber;
+    // 这里渲染过程中检测到有新的更新，该怎么做？
+
+
     currentlyFiber = fiber;
-    let elements = (fiber.type as Function)(fiber.pendingProps);
-    // console.log({ elements })
-    // if (_.isArray(elements.props.children)) {
-    //   elements = {..._.flatten(elements)}
-    // }
-    const next = reconcileChildren(fiber, [elements]);
+
+    const preBol = getBatchUpdating()
+    setBatchUpdating(true)
+    fiber.flags &= ~UPDATE;
+    const  elements = (fiber.type as Function)(fiber.pendingProps);
     currentlyFiber = preFiber;
+    const next = reconcileChildren(fiber, [elements]);
+    setBatchUpdating(preBol)
+    // 重新进来的时候，这里没有alternate。
+    if (fiber.flags & UPDATE) {
+      // console.log({
+      //   workInProgress,
+      //   fiber
+      // })
+      // console.log('组件渲染过程中有更新');
+      ensureRootIsScheduled(false)
+      return workInProgress;
+    } 
+    // console.log({ next, bol: workInProgress === fiber });
     return next;
   }
 

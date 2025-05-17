@@ -2,8 +2,8 @@ import _ from "lodash";
 import { addHookIndex, currentlyFiber, getRootFiber, setFiberWithFlags } from "./beginWork";
 import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber } from "./type";
 import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, EFFECTHOOK, getBatchUpdating, getCurrentContext, LAYOUT_EFFECT_HOOK, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot } from "./const";
-import { ensureRootIsScheduled } from "./ReactDom";
-import { isDepEqual } from "./utils";
+import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
+import { isDepEqual, logFiberIdPath } from "./utils";
 
 function findTagFiber(fiber: MyFiber, parentFiber: MyFiber) {
   let f = parentFiber.child;
@@ -34,7 +34,7 @@ export function MyUseState<T>(x: IStateParams<T>) : [T, (x: IDispatchValue<T>) =
    return [hook.memoizeState, hook.dispatchAction] as [T, (x: IStateParams<T>) => void];
   }
 
-  const originRootFiber = wipRoot;
+  // const originRootFiber = wipRoot;
   let v: T = _.isFunction(x) ? x() : x;
   const updateList: IDispatchValue<T>[] = []
   const newHook: IStateHook<T> = {
@@ -46,16 +46,18 @@ export function MyUseState<T>(x: IStateParams<T>) : [T, (x: IDispatchValue<T>) =
       // console.warn('组件已经卸载')
       return;
     }
-    const currentFiber = rootFiber ? findTagFiber(fiber, rootFiber) : fiber;
+    const currentFiber = rootFiber ? findTagFiber(fiber, rootFiber) : 
+    wipRoot ? findTagFiber(fiber, wipRoot) : fiber;
+    // console.log('setState', { currentFiber }, logFiberIdPath(currentFiber))
     if (!(currentFiber.flags & UPDATE) && getCurrentContext() !== DESTROY_CONTEXT) {
       newHook.memoizeState = _.isFunction(x) ? x(newHook.memoizeState) : x;
     } else {
       updateList.push(x);
     }
-     // console.error('setState', newHook.fiber)
+    //  console.error('setState', currentFiber, logFiberIdPath(currentFiber), getBatchUpdating())
      setFiberWithFlags(currentFiber, UPDATE)
      if (!getBatchUpdating()) {
-       ensureRootIsScheduled()
+       ensureRootIsScheduled(true)
      }
    }
   }
@@ -119,7 +121,7 @@ export const MyUseEffect = getEffectFn(EFFECT_PASSIVE, EFFECTHOOK);
 export const MyUseLayoutEffect = getEffectFn(EFFECT_LAYOUT, LAYOUT_EFFECT_HOOK);
 
 
-export function MyUseRef<T>(x: T): Readonly<{ current: T}> {
+export function MyUseRef<T>(x: T): { current: T} {
  const fiber: MyFiber = currentlyFiber;
  if (fiber.alternate) {
    const hook = fiber.hook[addHookIndex()] as IRefHook;
@@ -140,12 +142,12 @@ export function MyUseMemo<T>(cb: () => T, deps: any[]): T {
    const hook = fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
    if (!isDepEqual(hook.deps, deps)) {
     hook.deps = deps;
-    hook.memoizeState = cb();
+    hook.memoizeState = runInBatchUpdate(() => cb());
   }
    return hook.memoizeState
  }
  const newHook: IMemoOrCallbackHook = {
-   memoizeState: cb(),
+   memoizeState: runInBatchUpdate(() => cb()),
    deps
  }
  fiber.hook.push(newHook)

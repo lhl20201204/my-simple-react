@@ -42,7 +42,7 @@ export function addEventListener(key: string, fiber: MyFiber) {
         let jump = false;
         while(dom) {
           const targetFiber: MyFiber = dom[MyReactFiberKey];
-          if (targetFiber && targetFiber.memoizedProps[key])  {
+          if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key])  {
             e.stopPropagation = (...args: []) => {
               jump = true;
               originstopPropagation.call(e, ...args)

@@ -121,8 +121,9 @@ export function logFiberTree(fiber: MyFiber) {
 
 export function getEffectListId(fiber: MyFiber) {
   let f = fiber.updateQueue?.firstEffect;
+  let endEffect = fiber.updateQueue?.lastEffect?.next ?? null;
   const ret = []
-  while(f) {
+  while(f && f !== endEffect) {
     ret.push([f.id, f.tag & EFFECT_LAYOUT ? 'layout' : 'passive'].join('-'))
     f = f.next;
   }

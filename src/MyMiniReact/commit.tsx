@@ -1,9 +1,9 @@
 import _ from "lodash";
-import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, HOSTCOMPONENT, isInDebugger, LAYOUT_EFFECT_HOOK, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, getIsFlushEffecting, HOSTCOMPONENT, isInDebugger, LAYOUT_EFFECT_HOOK, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { IEffectHook, MyFiber, MyStateNode } from "./type";
 import { isHostComponent, updateDom } from "./dom";
 import { getEffectListId, logEffectType, logFiberTree } from "./utils";
-import { runInBatchUpdate } from "./ReactDom";
+import { reRender, runInBatchUpdate } from "./ReactDom";
 
 function getParentStateNode(fiber: MyFiber) {
   if (!fiber) return null;
@@ -200,15 +200,27 @@ const port2 = messageChanel.port2;
 port2.onmessage = (e) => {
   // e.data()
   if (e.data === 'EFFECT_PASSIVE') {
-  handleEffect(EFFECT_PASSIVE, rootFiber.updateQueue.firstEffect, rootFiber.updateQueue.lastEffect?.next ?? null)
+  //  console.warn('useEffect统一调度', _.cloneDeep({
+  //   rootFiber
+  //  }), [getEffectListId(rootFiber),
+  //   wipRoot ? getEffectListId(wipRoot) : ''
+  //  ])
+  if (!getIsFlushEffecting()) {
+    return;
+  }
+
+   handleEffect(EFFECT_PASSIVE, rootFiber)
    rootFiber.updateQueue.firstEffect = null;
    rootFiber.updateQueue.lastEffect = null;
+   setIsFlushEffecting(false);
   //  console.log('after-render', _.cloneDeep({ rootFiber}))
   }
 }
 
-function handleEffect(tag: number, firstEffect?: IEffectHook, endEffect?: IEffectHook) {
-  // let firstEffect: IEffectHook = rootFiber.updateQueue.firstEffect;
+export function handleEffect(tag: number, rootFiber?: MyFiber) {
+  let firstEffect: IEffectHook = rootFiber.updateQueue.firstEffect;
+  const endEffect: IEffectHook = rootFiber.updateQueue.lastEffect?.next;
+
   // console.log(_.cloneDeep({firstEffect}))
   const destroyList = [];
   const createList: [IEffectHook, Function][] = [];
@@ -237,6 +249,7 @@ function handleEffect(tag: number, firstEffect?: IEffectHook, endEffect?: IEffec
 
   runInBatchUpdate(() => {
     setCurrentContext(DESTROY_CONTEXT)
+    // console.log(_.cloneDeep({ destroyList, createList, rootFiber }))
     while (destroyList.length) {
       destroyList.shift()()
     }
@@ -321,6 +334,11 @@ export function commitRoot() {
   // rootFiber.updateQueue.lastEffect = l;
   // console.warn('useLayoutEffectAfter', _.cloneDeep({ rootFiber }), getEffectListId(rootFiber));
   // 异步设计一个问题，如果在更新中，有effect
+  // console.log('同步时候的rootFiber', _.cloneDeep({ wipRoot }), [
+  //   rootFiber ? getEffectListId(rootFiber) : '',
+  //   wipRoot ? getEffectListId(wipRoot) : ''
+  //  ])
+  setIsFlushEffecting(true)
   port1.postMessage('EFFECT_PASSIVE')
 
   // handleEffect()

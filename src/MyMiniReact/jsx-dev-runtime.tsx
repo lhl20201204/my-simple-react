@@ -7,7 +7,8 @@ declare global {
     reactType: any;
     promiseResolve2: any;
     useSelfReact: boolean;
-    React: any
+    React: any,
+    ReactDOM: any
   }
 }
 

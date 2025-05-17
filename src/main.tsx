@@ -1,5 +1,5 @@
 import { ReactDOM } from "./MyMiniReact";
-import WindomDom from "./Test/test3";
+import WindomDom from "./Test/test4";
 
 window.WindomDom = WindomDom;
 window.promiseResolve2();

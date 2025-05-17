@@ -70,6 +70,7 @@ export const FUNCTIONCOMPONENT = 0b00010;
 let batchUpdating = false;
 
 export function setBatchUpdating(bol: boolean) {
+  // console.log('setBatchUpdating', bol)
   batchUpdating = bol;
 }
 
@@ -137,4 +138,25 @@ export function setWipRoot(fiber: MyFiber | null) {
 
 export function setRootFiber(fiber: MyFiber | null) {
   rootFiber = fiber;
+}
+
+let isRendering = false;
+
+export function getIsRendering() {
+  return isRendering;
+}
+
+export function setIsRendering(bol: boolean) {
+  // console.log('setIsRendering', bol)
+   isRendering = bol
+}
+
+let isFlushEffecting = false;
+
+export function getIsFlushEffecting() {
+  return isFlushEffecting
+}
+
+export function setIsFlushEffecting(bol: boolean) {
+  isFlushEffecting = bol
 }

@@ -3,6 +3,7 @@ import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_PASSIVE, EFFECTH
 import { createDom, isHostComponent } from "./dom";
 import { getRootFiber } from "./beginWork";
 import { MyFiber } from "./type";
+import { getEffectListId } from "./utils";
 
 export function sumbitEffect(fiber: MyFiber) {
   const hasEffectBol = (fiber.flags & EFFECTHOOK);
@@ -39,6 +40,9 @@ export function sumbitEffect(fiber: MyFiber) {
         //  fiber.updateQueue.lastEffect = null;
         //  fiber.updateQueue.firstEffect = null
         // }
+        // if (parentFiber.tag === ROOTCOMPONENT) {
+        //   console.log('上传', _.cloneDeep(parentFiber.updateQueue), getEffectListId(parentFiber))
+        // }
       }
       f = f.next
     }
@@ -66,8 +70,8 @@ export function completeWork(fiber: MyFiber) {
 
   // console.warn('completeWork', _.cloneDeep({ fiber }))
 
-  const parentFiber = fiber.return;
-  if (fiber.lastEffect && parentFiber) {
+  const parentFiber = getRootFiber(fiber);
+  if (fiber.lastEffect && parentFiber && fiber.tag !== ROOTCOMPONENT) {
     if (parentFiber.lastEffect) {
       parentFiber.lastEffect.nextEffect = fiber.firstEffect;
     } else {
@@ -82,7 +86,7 @@ export function completeWork(fiber: MyFiber) {
 
 
   if (fiber.lanes > NOLANE && fiber.tag !== ROOTCOMPONENT) {
-    const parentFiber = fiber.return;
+    const parentFiber = getRootFiber(fiber)
     if (parentFiber.lastEffect) {
       parentFiber.lastEffect.nextEffect = fiber;
     } else {
@@ -97,7 +101,7 @@ export function completeWork(fiber: MyFiber) {
 
 
   sumbitEffect(fiber);
-  isInDebugger && console.error('completeWork', _.cloneDeep(fiber));
+  // console.error('completeWork', _.cloneDeep(fiber));
   fiber.lanes = NOLANE;
   fiber.childLanes = NOLANE;
 

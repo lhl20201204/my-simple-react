@@ -1,30 +1,33 @@
 import _ from "lodash";
 import { commitRoot } from "./commit";
-import { FUNCTIONCOMPONENT, HOSTCOMPONENT, NOEFFECT, NOLANE, setWorkInProgress, wipRoot, workInProgress } from "./const";
+import { FUNCTIONCOMPONENT, HOSTCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork } from "./beginWork";
-import { getPropsByElement, isStringOrNumber } from "./utils";
+import { getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
 
 
 let id = 0;
 export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null, 
-  tag?: number, isClone?: boolean) {
+  tag?: number) {
   // console.error(element);
+  // if (tag === ROOTCOMPONENT) {
+  //   console.error(_.cloneDeep(alternateFiber), alternateFiber && getEffectListId(alternateFiber));
+  // }
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id ++,
-    key: isClone ? alternateFiber.key : element?.key,
-    pendingProps: isClone ? alternateFiber.pendingProps : getPropsByElement(element),
-    type: isClone ? alternateFiber.type : (isStringOrNumber(element) ? 'text' : element?.type),
+    key: element?.key,
+    pendingProps: getPropsByElement(element),
+    type: (isStringOrNumber(element) ? 'text' : element?.type),
     flags: NOEFFECT,
     stateNode: null,
-    tag: isClone ? alternateFiber.tag : (tag ?? (typeof element?.type === 'function' ? FUNCTIONCOMPONENT : HOSTCOMPONENT)),
+    tag: (tag ?? (typeof element?.type === 'function' ? FUNCTIONCOMPONENT : HOSTCOMPONENT)),
     alternate: null,
     lanes: NOLANE,
     childLanes: NOLANE,
     child: null,
     dependencies: null,
-    elementType: isClone ? alternateFiber.elementType : element?.type,
+    elementType: element?.type,
     firstEffect: null,
     hook: [],
     updateQueue: {
@@ -36,7 +39,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     memoizedProps: {},
     memoizedState: null,
     nextEffect: null,
-    ref: isClone ? alternateFiber.ref : element?.ref,
+    ref: element?.ref,
     return: null,
     sibling: null,
   }
@@ -46,8 +49,8 @@ export function createFiber(element: MyElement | null, index: number, alternateF
 
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
-    newFiber.pendingProps = isClone ? alternateFiber.pendingProps  : getPropsByElement(element),
-    newFiber.ref = isClone ? alternateFiber.ref : element?.ref;
+    newFiber.pendingProps = getPropsByElement(element),
+    newFiber.ref =  element?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
@@ -82,15 +85,30 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     alternateFiber.lanes = NOLANE;
     alternateFiber.childLanes = NOLANE;;
   }
-
+  // if (tag === ROOTCOMPONENT) {
+  //   console.error(_.cloneDeep(newFiber), getEffectListId(newFiber), 
+  //   alternateFiber ? getEffectListId(alternateFiber): '')
+  // }
   return newFiber;
 }
 
+export function syncWorkLoop() {
+  while (workInProgress) {
+    performUnitOfWork();
+  }
+  if (!workInProgress && wipRoot) {
+    setIsRendering(false);
+    commitRoot();
+  }
+}
+
 export function workLoop(deadline: IdleDeadline) {
+  // console.log('workloop-----》')
   while (workInProgress && deadline.timeRemaining() > 1) {
     performUnitOfWork();
   }
   if (!workInProgress && wipRoot) {
+    setIsRendering(false);
     commitRoot();
   }
   if (workInProgress) {
@@ -106,6 +124,7 @@ export function performUnitOfWork(): MyFiber | null {
     setWorkInProgress(nextFiber);
     return nextFiber;
   }
+  // console.log('不能继续向下了')
   completeWork(current);
   if (current.sibling) {
     setWorkInProgress(current.sibling)
@@ -115,10 +134,12 @@ export function performUnitOfWork(): MyFiber | null {
   let temp = current.return;
   // 开始competeWork
   while (temp && !temp.sibling) {
+    // console.log('向上')
     completeWork(temp)
     temp = temp.return;
   }
   if (temp) {
+    // console.log('往兄弟走')
     completeWork(temp)
   }
   nextFiber = temp?.sibling;

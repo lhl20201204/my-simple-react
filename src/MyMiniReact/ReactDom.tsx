@@ -1,57 +1,87 @@
 import _ from "lodash";
-import { DEFAULTLANE, getBatchUpdating, NOLANE, ROOTCOMPONENT, rootFiber, setBatchUpdating, setFiberRoot, setWipRoot, setWorkInProgress, wipRoot } from "./const";
-import { createFiber, workLoop } from "./fiber";
+import { DEFAULTLANE, EFFECT_PASSIVE, getBatchUpdating, getIsFlushEffecting, getIsRendering, NOLANE, ROOTCOMPONENT, rootFiber, setBatchUpdating, setFiberRoot, setIsFlushEffecting, setIsRendering, setWipRoot, setWorkInProgress, wipRoot } from "./const";
+import { createFiber, syncWorkLoop, workLoop } from "./fiber";
 import { MyElement, MyFiber, MyStateNode, MyTask } from "./type";
-import { isPropsEqual } from "./utils";
+import { handleEffect } from "./commit";
 
 
 export const taskQueue: MyTask[] = [];
 
-export function ensureRootIsScheduled() {
+export function ensureRootIsScheduled(isSync: boolean) {
+
+  const originRootFiber = !rootFiber && wipRoot ? wipRoot : rootFiber;
+
   // console.log(_.cloneDeep({
+  //   originRootFiber,
+  //   wipRoot,
   //   rootFiber
   // }))
-  if (!rootFiber || ( rootFiber.lanes === NOLANE && rootFiber.childLanes === NOLANE)) {
+
+  if ((originRootFiber.lanes === NOLANE && originRootFiber.childLanes === NOLANE)) {
     return;
   }
   // rootFiber.updateQueue.firstEffect = null;
   // rootFiber.updateQueue.lastEffect = null;
   // console.log('重新置为空');
+
+  //  console.log('重新从root开始渲染');
   
    const newWipRoot = createFiber({
     $$typeof: window.reactType,
     type: 'root',
-    props: rootFiber.pendingProps,
+    props: originRootFiber.pendingProps,
     key: null,
     ref: null,
     _owner: null,
     _store: {
       validated: false
     }
-  }, 0, rootFiber, ROOTCOMPONENT);
-   console.error( _.cloneDeep({
-    wipRoot,
-    newWipRoot,
-    rootFiber,
-    propsIsEqual: isPropsEqual(newWipRoot.pendingProps, rootFiber.memoizedProps)
-   }))
-   scheduleRootFiber(newWipRoot)
+  }, 0, originRootFiber, ROOTCOMPONENT);
+  //  console.error( _.cloneDeep({
+  //   wipRoot,
+  //   newWipRoot,
+  //   rootFiber,
+  //   propsIsEqual: isPropsEqual(newWipRoot.pendingProps, rootFiber.memoizedProps)
+  //  }))
+   scheduleRootFiber(newWipRoot, isSync)
 }
 
-export function scheduleRootFiber(rootFiber3: MyFiber) {
+export function reRender(isSync: boolean) {
+  if (!getIsRendering()) {
+    if (getIsFlushEffecting()) {
+      handleEffect(EFFECT_PASSIVE, rootFiber)
+      rootFiber.updateQueue.firstEffect = null;
+      rootFiber.updateQueue.lastEffect = null;
+      wipRoot.updateQueue.lastEffect = null;
+      wipRoot.updateQueue.firstEffect = null;
+      setIsFlushEffecting(false)
+    }
+    setIsRendering(true);
+    // 立即执
+    if (isSync) {
+      syncWorkLoop()
+    } else {
+      requestIdleCallback(workLoop);
+    }
+  }
+}
+
+export function scheduleRootFiber(rootFiber3: MyFiber, isSync: boolean) {
   setWipRoot(rootFiber3);
   setWorkInProgress(rootFiber3);
-  requestIdleCallback(workLoop);
+  // console.log('scheduleRootFiber', { rootFiber3 }, isSync, getIsRendering());
+  reRender(isSync)
 }
 
 
-export function runInBatchUpdate(cb: () => void) {
+export function runInBatchUpdate<T>(cb: () => T): T {
   const preBol = getBatchUpdating()
    setBatchUpdating(true)
   const ret =  cb()
   setBatchUpdating(preBol)
+  // console.log({ preBol, cb })
  if (!preBol) {
-   ensureRootIsScheduled()
+   ensureRootIsScheduled(true)
  }
  return ret;
 }
@@ -79,7 +109,7 @@ export function createRoot(rootNode: MyStateNode) {
         stateNode: rootNode,
         current: rootFiber2
       });
-      scheduleRootFiber(rootFiber2)
+      scheduleRootFiber(rootFiber2, false)
     },
   };
 }
