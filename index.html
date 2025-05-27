@@ -7,13 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vite + TS</title>
   <style>
-    #toggleParent{
-     display: flex;
-     width: 100%;
-     justify-content: center;
+    #toggleParent {
+      display: flex;
+      width: 100%;
+      justify-content: center;
     }
 
-    #toggle{
+    #toggle {
       padding: 8px 16px;
       border-radius: 4px;
       border: 1px solid red;
@@ -23,8 +23,9 @@
 
 <body>
   <div id="toggleParent">
-     <button id="toggle" onclick="toggle()">切换版本</button>
+    <button id="toggle" onclick="toggle()">切换版本</button>
   </div>
+  <div id="loadingTip"></div>
 
   <div id="app"></div>
   <!-- <img id="source" src="./src/MyMiniReact/jsx.png" /> -->
@@ -42,6 +43,9 @@
     }
 
     document.getElementById('toggle').innerHTML = (!window.useSelfReact ? '目前使用的是官方正版' : '目前使用的是自定义版本') + ',点击切换'
+    window.deferPromise2 = new Promise((r) => {
+      window.promiseResolve2 = r;
+    })
 
     window.deferPromise = new Promise((r) => {
       window.promiseResolve = r;
@@ -52,14 +56,111 @@
       document.body.append(script)
     })
 
-    window.deferPromise2 = new Promise((r) => {
-      window.promiseResolve2 = r;
-    })
+    if (window.useSelfReact) {
+      window.promiseResolve()
+    } else {
+      const urls = [
+      () => {
+        const script = document.createElement('script');
+        script.type = 'text/babel';
+        script.setAttribute('data-type', 'module');
+        script.setAttribute('data-presets', 'typescript,react');
+        script.textContent = `
+  const innerDom = <div></div>;
+  window.reactType = innerDom.$$typeof;
+  // console.log(window.reactType)
+  window.promiseResolve()
+`;
+        return script
+      },
+      () => {
+        const script = document.createElement('script');
+        script.type = 'text/babel';
+        script.setAttribute('data-type', 'module');
+        script.setAttribute('data-presets', 'typescript,react');
+        script.textContent = `
+  if (!window.useSelfReact) {
+    (async () => {
+      await window.deferPromise2;
+      // console.log(window.WindomDom)
+      ReactDOM.render(window.WindomDom, document.getElementById('app'))
+    })()
+  }
+`;
+        return script
+      },
+        () => {
+          const script = document.createElement('script');
+          script.src =  "https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"
+          return script
+        },
+        () => {
+          const script = document.createElement('script');
+          script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"
+          return script
+        },
+        () => {
+          const script = document.createElement('script');
+          script.src = "https://unpkg.com/@babel/standalone/babel.min.js"
+          return script
+        },
+       ];
+
+      function loadScriptsSequentially(urls, index = 0) {
+        if (index >= urls.length) {
+            document.getElementById('loadingTip').innerHTML = '';
+            return; 
+        }
+        const script = urls[index]();
+        document.getElementById('loadingTip').innerHTML = `加载中...${index + 1}/${urls.length}`
+        script.onload = () => loadScriptsSequentially(urls, index + 1);
+        if (index < 2) {
+          loadScriptsSequentially(urls, index + 1)
+        }
+        document.body.appendChild(script);
+      }
+
+      loadScriptsSequentially(urls);
+
+//       ; (() => {
+//         const script = document.createElement('script');
+//         script.type = 'text/babel';
+//         script.setAttribute('data-type', 'module');
+//         script.setAttribute('data-presets', 'typescript,react');
+//         script.textContent = `
+//   const innerDom = <div></div>;
+//   window.reactType = innerDom.$$typeof;
+//   // console.log(window.reactType)
+//   window.promiseResolve()
+// `;
+//         document.body.appendChild(script);
+//       })();
+
+
+//       ; (() => {
+//         const script = document.createElement('script');
+//         script.type = 'text/babel';
+//         script.setAttribute('data-type', 'module');
+//         script.setAttribute('data-presets', 'typescript,react');
+//         script.textContent = `
+//   if (!window.useSelfReact) {
+//     (async () => {
+//       await window.deferPromise2;
+//       // console.log(window.WindomDom)
+//       ReactDOM.render(window.WindomDom, document.getElementById('app'))
+//     })()
+//   }
+// `;
+//         document.body.appendChild(script);
+//       })()
+
+    }
+
   </script>
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <!-- <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="text/babel" data-type="module" data-presets="typescript,react">
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script> -->
+  <!-- <script type="text/babel" data-type="module" data-presets="typescript,react">
     const innerDom = <div></div>;
     window.reactType = innerDom.$$typeof;
     // console.log(window.reactType)
@@ -73,7 +174,7 @@
         ReactDOM.render(window.WindomDom, document.getElementById('app'))
       })()
     }
-  </script>
+  </script> -->
   <!-- <script>
     // 使用打包后的文件路径
     fetch('./src/main.tsx')

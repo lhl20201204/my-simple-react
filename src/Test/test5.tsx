@@ -14,50 +14,32 @@ const Parent = (props: { children: any }) => {
 
   function parentEffect() {
     console.log(state, 'Parent-useEffect')
-      return () => {
-       console.log(state, 'Parent-useEffect-destroy');
-     }
+    return () => {
+      console.log(state, 'Parent-useEffect-destroy');
+    }
   }
 
   useEffect(parentEffect, [state])
 
   console.log('before')
-  // if (state < 6) {
-  //  if (state > 4) {
-  //     console.log('给子组件传递', state + 1);
-  //     payloadChildState('test', () => {
-  //       console.log('子组件设置state')
-  //       return 10;
-  //     })
-  //   }
-    
-  // }
-
-  // sleep(1000)
-
-
   const cb = useCallback(() => {
-    // ReactDOM.unstable_batchedUpdates(() => {
-      console.error('step1')
-      setState((c) => c + 1)
-      console.error('step2')
-      setState((c) => c + 1)
-      console.error('step3')
-      setState((c) => c + 1)
-      console.error('step4')
-    // })
+    console.error('step1')
+    setState((c) => c + 1)
+    console.error('step2')
+    setState((c) => c + 1)
+    console.error('step3')
+    setState((c) => c + 1)
+    console.error('step4')
   }, [])
 
   const cb2 = useCallback(() => {
-    // ReactDOM.unstable_batchedUpdates(() => {
-      console.log('step1')
-      setInnerState((c) => c + 1)
-      console.log('step2')
-      setInnerState((c) => c + 1)
-      console.log('step3')
-      setInnerState((c) => c + 1)
-      console.log('step4')
-    // })
+    console.log('step1')
+    setInnerState((c) => c + 1)
+    console.log('step2')
+    setInnerState((c) => c + 1)
+    console.log('step3')
+    setInnerState((c) => c + 1)
+    console.log('step4')
   }, [])
 
   console.log('after')
@@ -113,9 +95,12 @@ const Child = (props: { name: string }) => {
   useEffect(obj[props.name], [state])
 
   console.log('before-child', props.name, state)
-  if (props.name === '1' && state !== 10) {
-    setInnerState(10)
-    // payloadChildState('test', 10)
+  if (props.name === '3' && state !== 10) {
+    // 使用 setTimeout 来测试批处理行为
+    setTimeout(() => {
+      console.error('setTimeout-child');
+      setInnerState(10)
+    }, 0)
   }
 
   console.log('Child', props.name, state);
@@ -125,7 +110,6 @@ const Child = (props: { name: string }) => {
     <div>{props.name}Child--{state}
       <button  key={props.name + '_btn'} onClick={() => {
         setState(state + 1)
-
       }}>setState</button>
     </div>
   </div>;
@@ -133,8 +117,6 @@ const Child = (props: { name: string }) => {
 
 const dom =  <div>
   <Parent key={'Parent'}>
-  <Child name="-2" key={"-2"} />
-    <Child name="-1" key={"-1"} />
     <Child name="1" key={"1"} />
     <Child name="2" key={"2"} />
     <Child name="3"  key={"3"}/>

@@ -3,7 +3,7 @@ import { DELETE, PLACEMENT, UPDATE } from "./const";
 export type MyProps = Record<string, any>;
 export type MyDomNode = HTMLElement;
 
-export type MyStateNode= null | MyDomNode | Text;
+export type MyStateNode = null | MyDomNode | Text;
 
 export type MyState = Record<string, any>;
 
@@ -15,7 +15,7 @@ export type MyFunctionComponent = (props: MyProps, ref?: MyRef) => MyElement;
 
 export type MyClassComponent = new (props: MyProps, context: any) => MyElement;
 
-export type MyElementType = 'root' | 'div' | 'text'  | 'span' | MyFunctionComponent | MyClassComponent;
+export type MyElementType = 'root' | 'div' | 'text' | 'span' | MyFunctionComponent | MyClassComponent;
 
 export type MyElmemetKey = string | number | null | undefined
 export type MyElement = {
@@ -24,8 +24,8 @@ export type MyElement = {
   props: MyProps;
   key: MyElmemetKey;
   ref: null | MyRef;
-  _owner: null;
-  _store: {validated: false}
+  _owner: null | MyFiber;
+  _store: { validated: false }
 };
 
 export type MyJSX = (props: MyProps, key: MyElmemetKey) => MyElement;
@@ -56,7 +56,7 @@ export type IStateParams<T> = (T | (() => T));
 export type IDispatchValue<T> = (T | ((c: T) => T));
 
 //TODO useState的结构改造.
-export type IStateHook<T> =  {
+export type IStateHook<T> = {
   memoizeState: T,
   updateList: IDispatchValue<T>[],
   dispatchAction: (x: IDispatchValue<T>) => void;
@@ -74,6 +74,7 @@ export type IEffectHook = {
   create: () => (() => void) | void, // useEffect 的回调
   destroy: (() => void) | void,      // 清理函数
   deps: Array<any> | null,   // 依赖项
+  pendingDeps?: Array<any> | null,
   next: IEffectHook | null,  //           // 指向下一个 effect，形成链表
 }
 

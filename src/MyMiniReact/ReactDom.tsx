@@ -3,13 +3,14 @@ import { DEFAULTLANE, EFFECT_PASSIVE, getBatchUpdating, getIsFlushEffecting, get
 import { createFiber, syncWorkLoop, workLoop } from "./fiber";
 import { MyElement, MyFiber, MyStateNode, MyTask } from "./type";
 import { handleEffect } from "./commit";
+import { getEffectListId } from "./utils";
 
 
 export const taskQueue: MyTask[] = [];
 
 export function ensureRootIsScheduled(isSync: boolean) {
 
-  const originRootFiber = !rootFiber && wipRoot ? wipRoot : rootFiber;
+  const originRootFiber = !rootFiber || wipRoot ? wipRoot : rootFiber;
 
   // console.log(_.cloneDeep({
   //   originRootFiber,
@@ -25,8 +26,8 @@ export function ensureRootIsScheduled(isSync: boolean) {
   // console.log('重新置为空');
 
   //  console.log('重新从root开始渲染');
-  
-   const newWipRoot = createFiber({
+
+  const newWipRoot = createFiber({
     $$typeof: window.reactType,
     type: 'root',
     props: originRootFiber.pendingProps,
@@ -41,17 +42,20 @@ export function ensureRootIsScheduled(isSync: boolean) {
   //   wipRoot,
   //   newWipRoot,
   //   rootFiber,
-  //   propsIsEqual: isPropsEqual(newWipRoot.pendingProps, rootFiber.memoizedProps)
+  //   path: [
+  //     wipRoot ? getEffectListId(wipRoot) : '',
+  //     newWipRoot ? getEffectListId(newWipRoot) : '',
+  //     rootFiber ? getEffectListId(rootFiber) : ''
+  //   ]
   //  }))
-   scheduleRootFiber(newWipRoot, isSync)
+  scheduleRootFiber(newWipRoot, isSync)
 }
 
 export function reRender(isSync: boolean) {
   if (!getIsRendering()) {
     if (getIsFlushEffecting()) {
-      handleEffect(EFFECT_PASSIVE, rootFiber)
-      rootFiber.updateQueue.firstEffect = null;
-      rootFiber.updateQueue.lastEffect = null;
+      // console.error('提前执行useEffect')
+      handleEffect(EFFECT_PASSIVE, rootFiber, true)
       wipRoot.updateQueue.lastEffect = null;
       wipRoot.updateQueue.firstEffect = null;
       setIsFlushEffecting(false)
@@ -59,6 +63,7 @@ export function reRender(isSync: boolean) {
     setIsRendering(true);
     // 立即执
     if (isSync) {
+      // console.log('开始渲染')
       syncWorkLoop()
     } else {
       requestIdleCallback(workLoop);
@@ -74,16 +79,15 @@ export function scheduleRootFiber(rootFiber3: MyFiber, isSync: boolean) {
 }
 
 
-export function runInBatchUpdate<T>(cb: () => T): T {
+export function runInBatchUpdate<T>(cb: () => T, jumpReRender = false): T {
   const preBol = getBatchUpdating()
-   setBatchUpdating(true)
-  const ret =  cb()
+  setBatchUpdating(true)
+  const ret = cb()
   setBatchUpdating(preBol)
-  // console.log({ preBol, cb })
- if (!preBol) {
-   ensureRootIsScheduled(true)
- }
- return ret;
+  if (!preBol && !jumpReRender) {
+    ensureRootIsScheduled(true)
+  }
+  return ret;
 }
 
 

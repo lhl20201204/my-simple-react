@@ -21,9 +21,9 @@ export const REFEFFECT = 0b00100000;
 
 export const NOEFFECT = 0b00000;
 
-export const EFFECT_PASSIVE= 0b000001;
+export const EFFECT_PASSIVE = 0b000001;
 
-export const EFFECT_LAYOUT= 0b000010;
+export const EFFECT_LAYOUT = 0b000010;
 
 export const EFFECT_HOOK_HAS_EFFECT = 0b000100;
 
@@ -148,7 +148,7 @@ export function getIsRendering() {
 
 export function setIsRendering(bol: boolean) {
   // console.log('setIsRendering', bol)
-   isRendering = bol
+  isRendering = bol
 }
 
 let isFlushEffecting = false;

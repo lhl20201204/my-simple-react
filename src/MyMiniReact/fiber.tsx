@@ -3,19 +3,19 @@ import { commitRoot } from "./commit";
 import { FUNCTIONCOMPONENT, HOSTCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork } from "./beginWork";
-import { getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
+import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
 
 
 let id = 0;
-export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null, 
+export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null,
   tag?: number) {
   // console.error(element);
   // if (tag === ROOTCOMPONENT) {
   //   console.error(_.cloneDeep(alternateFiber), alternateFiber && getEffectListId(alternateFiber));
   // }
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
-    id: id ++,
+    id: id++,
     key: element?.key,
     pendingProps: getPropsByElement(element),
     type: (isStringOrNumber(element) ? 'text' : element?.type),
@@ -50,7 +50,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
     newFiber.pendingProps = getPropsByElement(element),
-    newFiber.ref =  element?.ref;
+    newFiber.ref = element?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
@@ -60,35 +60,42 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     //     console.log('fiber.next未断开', _.cloneDeep({updateQueue :alternateFiber.updateQueue, alternateFiber}))
     //   }
     // }
-    const endEffect = alternateFiber.updateQueue.lastEffect?.next ?? null;
+    // const endEffect = alternateFiber.updateQueue.lastEffect?.next ?? null;
 
     newFiber.updateQueue.firstEffect = alternateFiber.updateQueue.firstEffect;
-    let f = newFiber.updateQueue.firstEffect;
-    while(f && f!== endEffect) {
-      newFiber.updateQueue.lastEffect = f;
-      f = f.next;
-    }
+    // let f = newFiber.updateQueue.firstEffect;
+    newFiber.updateQueue.lastEffect = alternateFiber.updateQueue.lastEffect;
     newFiber.hook = alternateFiber.hook;
     newFiber.stateNode = alternateFiber.stateNode;
     newFiber.child = alternateFiber.child;
     newFiber.sibling = alternateFiber.sibling;
+    newFiber.flags = alternateFiber.flags;
+    newFiber.firstEffect = alternateFiber.firstEffect;
+    newFiber.lastEffect = alternateFiber.lastEffect;
 
     // console.log(_.cloneDeep({ newFiber }))
 
 
-    // alternateFiber.updateQueue.firstEffect = null;
-    // alternateFiber.updateQueue.lastEffect = null;
+    alternateFiber.updateQueue.firstEffect = null;
+    alternateFiber.updateQueue.lastEffect = null;
+    alternateFiber.firstEffect = null;
+    alternateFiber.lastEffect = null;
+
+    alternateFiber.flags = NOEFFECT;
     alternateFiber.alternate = newFiber;
-    alternateFiber.hook  = [];
+    alternateFiber.hook = [];
     alternateFiber.memoizedProps = alternateFiber.pendingProps;
-    alternateFiber.pendingProps = {};
+    // alternateFiber.pendingProps = {};
     alternateFiber.lanes = NOLANE;
     alternateFiber.childLanes = NOLANE;;
   }
+  if (_.has(element, '_owner')) {
+    element._owner = newFiber;
+  }
   // if (tag === ROOTCOMPONENT) {
-  //   console.error(_.cloneDeep(newFiber), getEffectListId(newFiber), 
-  //   alternateFiber ? getEffectListId(alternateFiber): '')
+  //   console.error(getCommitEffectListId(newFiber), _.cloneDeep(newFiber))
   // }
+  // console.warn('createFiber', _.cloneDeep({ newFiber }))
   return newFiber;
 }
 

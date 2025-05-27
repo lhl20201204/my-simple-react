@@ -36,6 +36,16 @@ declare namespace React {
   type  SetStateAction<T> = T | ((_x: T) => T)
 }
 
+export function payloadChildState(eventName: string, value: any) {
+ const totalEventName = eventName + childSign
+ emitter.emit(totalEventName, value)
+}
+
+export function payloadParentState(eventName: string, value: any) {
+ const totalEventName = eventName + parentSign
+ emitter.emit(totalEventName, value)
+}
+
 export function useParentState<T>(eventName: string, initialState: T):
   [T, React.Dispatch<React.SetStateAction<T>>, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setInnerState] = useState<T>(initialState ?? map.get(eventName) as T);
@@ -67,6 +77,7 @@ export function useParentState<T>(eventName: string, initialState: T):
   }, [])
 
   useEffect(() => {
+    // console.error('开始监听----》')
     const totalEventName = eventName + parentSign
     emitter.on(totalEventName, setState);
     return () => {
@@ -77,21 +88,27 @@ export function useParentState<T>(eventName: string, initialState: T):
   return [state, setState, setInnerState];
 }
 
-export function useChildState<T>(eventName: string): [T, React.Dispatch<React.SetStateAction<T>>] {
+export function useChildState<T>(eventName: string, debuggerFnName?: string): [T, 
+  React.Dispatch<React.SetStateAction<T>>,
+  React.Dispatch<React.SetStateAction<T>>] {
   const [state, setInnerState] = useState<T>(map.get(eventName) as T);
-  useEffect(() => {
+  const fn = () => {
     const totalEventName = eventName + childSign
     emitter.on(totalEventName, setInnerState);
     return () => {
       emitter.off(totalEventName, setInnerState);
     }
-  }, [])
+  };
+  const obj = {
+    [debuggerFnName]: fn
+  }
+  useEffect(debuggerFnName ? obj[debuggerFnName] : fn, [])
 
   const setState = useCallback((value: T | ((x: T) => T)) => {
     const totalEventName = eventName + parentSign
     emitter.emit(totalEventName, value);
   }, [])
 
-  return [state, setState];
+  return [state, setState, setInnerState];
 }
 

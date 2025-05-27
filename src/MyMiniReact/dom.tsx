@@ -40,9 +40,9 @@ export function addEventListener(key: string, fiber: MyFiber) {
       runInBatchUpdate(() => {
         let dom = e.target as HTMLElement;
         let jump = false;
-        while(dom) {
+        while (dom) {
           const targetFiber: MyFiber = dom[MyReactFiberKey];
-          if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key])  {
+          if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key]) {
             e.stopPropagation = (...args: []) => {
               jump = true;
               originstopPropagation.call(e, ...args)
@@ -50,7 +50,7 @@ export function addEventListener(key: string, fiber: MyFiber) {
             // console.log('触发回调时候的fiber', targetFiber, [targetFiber.memoizedProps[key]])
             if (!_.isFunction(targetFiber.memoizedProps[key])) {
               console.warn(e, '不是函数')
-            } else{
+            } else {
               targetFiber.memoizedProps[key](e)
             }
           }
@@ -80,6 +80,8 @@ export function updateDom(fiber: MyFiber) {
       if (fiber.type === 'text') {
         if (!(_.isNil(newProps) || _.isBoolean(newProps))) {
           dom.textContent = `${newProps}`;
+        } else {
+          dom.textContent = ``;
         }
         return;
       }
@@ -151,7 +153,7 @@ export function createDom(fiber: MyFiber) {
       }
       f = f.sibling;
     }
-    isInDebugger &&  console.log(dom, '添加', ret)
+    // console.log(dom, '添加', ret)
     return dom;
   }
   return null;

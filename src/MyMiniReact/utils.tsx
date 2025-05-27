@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { MyElement, MyFiber, MyProps } from "./type";
 import { IRenderNode, renderTree } from "../View";
-import { EFFECT_LAYOUT, EffECTDicts } from "./const";
+import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts } from "./const";
 
 const joinSign = '#######';
 
@@ -19,7 +19,7 @@ const idSet = new Set();
 
 export function getUUID(str: string) {
   let str2 = generateUUID(str);
-  while(idSet.has(str2)) {
+  while (idSet.has(str2)) {
     str2 = generateUUID(str);
   }
   idSet.add(str2)
@@ -48,7 +48,7 @@ export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
   if (_.size(keys) !== _.size(_.keys(obj2))) {
     return false;
   }
-  for(const key of keys) {
+  for (const key of keys) {
     if (obj1[key] !== obj2[key]) {
       return false;
     }
@@ -63,8 +63,9 @@ export function isDepEqual(dep1: Array<any> | null, dep2: Array<any> | null) {
     // 长度不同，或者都为null
     return false
   }
-  for(let i = 0; i< len1; i++) {
+  for (let i = 0; i < len1; i++) {
     if (dep1[i] !== dep2[i]) {
+      // console.log(dep1[i], dep2[i])
       return false;
     }
   }
@@ -89,9 +90,9 @@ export function logFiberTree(fiber: MyFiber) {
     }
     let name: any = f.type;
     if (typeof name === 'function') {
-      name  = (name as Function).name ;
+      name = (name as Function).name;
     } else if (name === 'text') {
-      name =`${f.memoizedProps }`
+      name = `${f.memoizedProps}`
     } else {
       name = _.compact([name, f.memoizedProps?.id]).join('#')
     }
@@ -104,7 +105,7 @@ export function logFiberTree(fiber: MyFiber) {
     //   console.log(_.cloneDeep(f))
     // }
     let first = f.child;
-    while(first) {
+    while (first) {
       const n = dfs(first);
       if (n) {
         node.children.push(n)
@@ -123,8 +124,10 @@ export function getEffectListId(fiber: MyFiber) {
   let f = fiber.updateQueue?.firstEffect;
   let endEffect = fiber.updateQueue?.lastEffect?.next ?? null;
   const ret = []
-  while(f && f !== endEffect) {
-    ret.push([f.id, f.tag & EFFECT_LAYOUT ? 'layout' : 'passive'].join('-'))
+  while (f && f !== endEffect) {
+    ret.push([f.id, f.tag & EFFECT_LAYOUT ? 'layout' : 'passive',
+    f.tag & EFFECT_HOOK_HAS_EFFECT ? 'effect' : ''
+    ].join('-'))
     f = f.next;
   }
   return ret.join(',')
@@ -132,4 +135,15 @@ export function getEffectListId(fiber: MyFiber) {
 
 export function logFiberIdPath(fiber: MyFiber, ret = []) {
   return fiber ? logFiberIdPath(fiber.return, [...ret, fiber.id,]) : ret.join('->');
+}
+
+export function getCommitEffectListId(fiber: MyFiber) {
+  let f = fiber.firstEffect;
+  let endEffect = fiber.lastEffect?.nextEffect ?? null;
+  const ret = []
+  while (f && f !== endEffect) {
+    ret.push([f.id, f.flags, logEffectType(f)].join('-'))
+    f = f.nextEffect
+  }
+  return ret.join(',')
 }
