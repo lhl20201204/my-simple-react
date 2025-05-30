@@ -4,6 +4,7 @@ import { MyUseEffect,  MyUseRef, MyUseState ,
   MyUseLayoutEffect
 } from '../MyMiniReact/beginWork';
 import { runInBatchUpdate } from '../MyMiniReact/ReactDom';
+import {MyMemo} from '../MyMiniReact/trait';
 
 export const useEffect: typeof MyUseEffect = window.useSelfReact ? MyUseEffect : window.React.useEffect;
 export const useRef: typeof MyUseRef = window.useSelfReact ? MyUseRef : window.React.useRef;
@@ -13,8 +14,13 @@ export const useMemo: typeof MyUseMemo = window.useSelfReact ? MyUseMemo : windo
 export const useLayoutEffect: typeof MyUseLayoutEffect  = window.useSelfReact ? MyUseLayoutEffect: window.React.useLayoutEffect;
 
 export const  ReactDOM = {
-  unstable_batchedUpdates: window.useSelfReact ? runInBatchUpdate: window.ReactDOM.unstable_batchedUpdates
+  unstable_batchedUpdates: window.useSelfReact ? function <T>(cb: () => T): T {
+    return runInBatchUpdate(cb, false);
+  }: window.ReactDOM.unstable_batchedUpdates
 }
+
+export const memo: typeof MyMemo = window.useSelfReact ? MyMemo : window.React.memo;
+
 
 export function sleep(t) {
   let time = Number(new Date());

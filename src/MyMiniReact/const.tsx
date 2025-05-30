@@ -19,6 +19,8 @@ export const LAYOUT_EFFECT_HOOK = 0b00010000;
 
 export const REFEFFECT = 0b00100000;
 
+export const INSERTBEFORE = 0b01000000;
+
 export const NOEFFECT = 0b00000;
 
 export const EFFECT_PASSIVE = 0b000001;
@@ -36,7 +38,8 @@ export const EffECTDicts = {
   [NOEFFECT]: 'noEffect',
   [EFFECTHOOK]: 'effectHook',
   [REFEFFECT]: 'refEffect',
-  [LAYOUT_EFFECT_HOOK]: 'layoutEffectHook'
+  [LAYOUT_EFFECT_HOOK]: 'layoutEffectHook',
+  [INSERTBEFORE]: 'insertBefore'
 };
 
 
@@ -57,9 +60,16 @@ export const DEFAULTLANE = 0b00100;
 
 export const ROOTCOMPONENT = 0b00000;
 
-export const HOSTCOMPONENT = 0b00001;
+export const TEXTCOMPONENT = 0b000001;
 
-export const FUNCTIONCOMPONENT = 0b00010;
+export const HOSTCOMPONENT = 0b000010;
+
+export const FUNCTIONCOMPONENT = 0b000100;
+
+export const MEMOCOMPONENT = 0b001000;
+
+export const FRAGMENTCOMPONENT = 0b010000;
+
 
 // let globalContextFlags: number = NOCONTEXT;
 

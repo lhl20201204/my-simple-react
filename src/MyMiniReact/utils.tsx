@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { MyElement, MyFiber, MyProps } from "./type";
 import { IRenderNode, renderTree } from "../View";
-import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts } from "./const";
+import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts, MEMOCOMPONENT } from "./const";
 
 const joinSign = '#######';
 
@@ -34,7 +34,37 @@ export function getPropsByElement(element: MyElement): MyProps {
   return isStringOrNumber(element) ? element : element.props
 }
 
-export function isPropsEqual(obj1: MyProps, obj2: MyProps) {
+export function shallowEqual(obj1: MyProps, obj2: MyProps) {
+  if (obj1 === obj2) {
+    return true;
+  }
+
+  if (typeof obj1 !== 'object' || obj1 === null ||
+      typeof obj2 !== 'object' || obj2 === null) {
+    return false;
+  }
+
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+
+  for (let i = 0; i < keys1.length; i++) {
+    const key = keys1[i];
+    if (!Object.prototype.hasOwnProperty.call(obj2, key) || obj1[key] !== obj2[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function isPropsEqual(obj1: MyProps, obj2: MyProps, fiber: MyFiber) {
+  if (fiber.tag === MEMOCOMPONENT) {
+    return (fiber.type.compare ?? shallowEqual)(obj1, obj2);
+  }
   return obj1 === obj2;
   if (isStringOrNumber(obj1)) {
     return obj1 === obj2;
@@ -88,7 +118,10 @@ export function logFiberTree(fiber: MyFiber) {
     if (!f) {
       return null;
     }
-    let name: any = f.type;
+    let name: any = _.isSymbol(f.type) ? f.type.description :
+     f.type?.$$typeof === window.reactMemoType ? 'react.memo' :
+     f.type;
+    //  console.log(name)
     if (typeof name === 'function') {
       name = (name as Function).name;
     } else if (name === 'text') {

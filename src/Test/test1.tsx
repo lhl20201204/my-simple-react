@@ -60,7 +60,7 @@ const App3 = () => {
         </div>
        }
 
-const App = () => {
+const App = ({ children }: { children?: any }) => {
         const [count, setCount] = useState(1);
         const ref = useRef(null);
         // useEffect(() => {
@@ -74,6 +74,7 @@ const App = () => {
                 // console.log([x])
         }} onClick={onClick}>
                 <App3 key="44" />
+                {children}
                 {count === 2 && <App2 id={3} key="33"/>}
                 ap<span id="8" ref={ref} key="8">p</span>{count}</div>
 }
@@ -94,8 +95,13 @@ const App2 = ({id }: { id: number}) => {
                 等于{id}会变绿, fun<span id="10" key="10">ction</span>{count2}</div>
 }
 
+const App4 = () => {
+  console.log('App4')
+  return <div>fdfff</div>
+}
+
 const dom1 = <div id="1" key={1}>
-        <App key="88" />
+        <App key="88" >dfxc  <App4/></App>
         hello
         <div id="2" key="2">
                 <span id="3" key="3"> w</span>

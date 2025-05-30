@@ -57,28 +57,67 @@
     })
 
     if (window.useSelfReact) {
+      window.reactType = Symbol('React.element');
+      window.reactMemoType = Symbol('React.memo')
+      window.reactFragmentType = Symbol('React.Fragment')
+      // console.log(window)
       window.promiseResolve()
     } else {
       const urls = [
-      () => {
-        const script = document.createElement('script');
-        script.type = 'text/babel';
-        script.setAttribute('data-type', 'module');
-        script.setAttribute('data-presets', 'typescript,react');
-        script.textContent = `
+        {
+          type: 'fetch',
+          script: () => {
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"
+            return script
+          },
+        },
+        {
+          type: 'fetch',
+          script: () => {
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"
+            return script
+          },
+        },
+        {
+          type: 'fetch',
+          script: () => {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@babel/standalone/babel.min.js"
+            return script
+          }
+        },
+        {
+          type: 'babel',
+          script: () => {
+            const script = document.createElement('script');
+            script.type = 'text/babel';
+            script.setAttribute('data-type', 'module');
+            script.setAttribute('data-presets', 'typescript,react');
+            script.textContent = `
   const innerDom = <div></div>;
   window.reactType = innerDom.$$typeof;
-  // console.log(window.reactType)
+  const App2 = window.React.memo(() => <div></div>)
+  window.reactMemoType = App2.$$typeof;
+  const dom3 = <><div></div><span></span></>;
+  window.reactFragmentType = dom3.type;
+  console.log(window.reactType, App2, <App2 />, dom3,
+  <React.Fragment><div></div><div></div></React.Fragment>,
+  );
   window.promiseResolve()
 `;
-        return script
-      },
-      () => {
-        const script = document.createElement('script');
-        script.type = 'text/babel';
-        script.setAttribute('data-type', 'module');
-        script.setAttribute('data-presets', 'typescript,react');
-        script.textContent = `
+            return script
+          }
+        },
+        {
+          type: 'babel',
+          script: () => {
+            const script = document.createElement('script');
+            script.type = 'text/babel';
+            script.setAttribute('data-type', 'module');
+            script.setAttribute('data-presets', 'typescript,react');
+            script.textContent = `
   if (!window.useSelfReact) {
     (async () => {
       await window.deferPromise2;
@@ -87,72 +126,52 @@
     })()
   }
 `;
-        return script
-      },
-        () => {
-          const script = document.createElement('script');
-          script.src =  "https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"
-          return script
+            return script
+          }
         },
-        () => {
-          const script = document.createElement('script');
-          script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"
-          return script
-        },
-        () => {
-          const script = document.createElement('script');
-          script.src = "https://unpkg.com/@babel/standalone/babel.min.js"
-          return script
-        },
-       ];
+      ];
 
       function loadScriptsSequentially(urls, index = 0) {
         if (index >= urls.length) {
-            document.getElementById('loadingTip').innerHTML = '';
-            return; 
+          document.getElementById('loadingTip').innerHTML = '';
+          // 所有非 babel 脚本加载完成后，加载 babel 脚本
+          loadBabelScripts(urls);
+          return;
         }
-        const script = urls[index]();
-        document.getElementById('loadingTip').innerHTML = `加载中...${index + 1}/${urls.length}`
+
+        // 先加载非 babel 脚本
+        if (urls[index].type === 'babel') {
+          // 跳过 babel 脚本，先加载其他脚本
+          loadScriptsSequentially(urls, index + 1);
+          return;
+        }
+
+        const script = urls[index].script();
+        document.getElementById('loadingTip').innerHTML = `加载中...${index + 1}/${urls.length}`;
         script.onload = () => loadScriptsSequentially(urls, index + 1);
-        if (index < 2) {
-          loadScriptsSequentially(urls, index + 1)
-        }
         document.body.appendChild(script);
       }
 
+      // 加载完非 babel 脚本后，再加载 babel 脚本
+      function loadBabelScripts(urls) {
+        const babelScripts = urls.filter(url => url.type === 'babel');
+        babelScripts.forEach(script => {
+          const scriptElement = script.script();
+          // 手动调用 babel 转译
+          const transformedCode = Babel.transform(scriptElement.textContent, {
+            filename: 'babel.js',
+            presets: ['typescript', 'react']
+          }).code;
+          
+          // 创建新的脚本元素，使用转译后的代码
+          const newScript = document.createElement('script');
+          newScript.textContent = transformedCode;
+          document.body.appendChild(newScript);
+        });
+      }
+
+      // 开始加载脚本
       loadScriptsSequentially(urls);
-
-//       ; (() => {
-//         const script = document.createElement('script');
-//         script.type = 'text/babel';
-//         script.setAttribute('data-type', 'module');
-//         script.setAttribute('data-presets', 'typescript,react');
-//         script.textContent = `
-//   const innerDom = <div></div>;
-//   window.reactType = innerDom.$$typeof;
-//   // console.log(window.reactType)
-//   window.promiseResolve()
-// `;
-//         document.body.appendChild(script);
-//       })();
-
-
-//       ; (() => {
-//         const script = document.createElement('script');
-//         script.type = 'text/babel';
-//         script.setAttribute('data-type', 'module');
-//         script.setAttribute('data-presets', 'typescript,react');
-//         script.textContent = `
-//   if (!window.useSelfReact) {
-//     (async () => {
-//       await window.deferPromise2;
-//       // console.log(window.WindomDom)
-//       ReactDOM.render(window.WindomDom, document.getElementById('app'))
-//     })()
-//   }
-// `;
-//         document.body.appendChild(script);
-//       })()
 
     }
 

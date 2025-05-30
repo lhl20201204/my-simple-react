@@ -4,11 +4,13 @@ import _ from "lodash";
 declare global {
   interface Window {
     WindomDom: any; // 你可以指定具体类型，比如 WindomDomType
-    reactType: any;
     promiseResolve2: any;
     useSelfReact: boolean;
     React: any,
     ReactDOM: any
+    reactType: Symbol;
+    reactMemoType: Symbol;
+    reactFragmentType: Symbol;
   }
 }
 
@@ -32,5 +34,7 @@ export function jsxDev(
     }
   };
 }
+
+export const Fragment = window.reactFragmentType ?? Symbol('React.Fragment')
 
 export const jsxDEV = jsxDev;

@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, getIsFlushEffecting, HOSTCOMPONENT, isInDebugger, LAYOUT_EFFECT_HOOK, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, getIsFlushEffecting, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_EFFECT_HOOK, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { IEffectHook, MyFiber, MyStateNode } from "./type";
 import { isHostComponent, updateDom } from "./dom";
 import { getCommitEffectListId, getEffectListId, logEffectType, logFiberTree } from "./utils";
@@ -103,6 +103,44 @@ function commitPlacement(fiber: MyFiber) {
   }
 }
 
+function commitInsertBefore(fiber: MyFiber) {
+  if (!fiber) {
+    throw new Error('运行时出错')
+  }
+  const parentDom: MyStateNode | null = getParentStateNode(fiber);
+  if (parentDom) {
+    const targetIndex = fiber.newInsertIndex;
+    if (_.isNil(targetIndex)) {
+      throw new Error('运行时出错')
+    }
+    fiber.newInsertIndex = null;
+    let f = fiber;
+    while(f) {
+      if (f.index === targetIndex) {
+        break;
+      }
+      f = f.sibling;
+    }
+    if ((!f || f.index !== targetIndex) && targetIndex !== -1) {
+      throw new Error('运行时出错')
+    }
+
+    const insertDom = f ? findSiblingHostDom(f, parentDom as HTMLElement) : null;
+    const currentDom = getStateNode(fiber);
+    if (!currentDom) {
+      throw new Error('运行时出错')
+    }
+    // console.log({insertDom});
+    if (insertDom) {
+      isInDebugger && console.log(fiber, [parentDom], '将', [currentDom], '插入到', [insertDom], '前面')
+      parentDom.insertBefore(currentDom, insertDom)
+    } else {
+      isInDebugger && console.log(fiber, [parentDom], '添加', [currentDom])
+      parentDom.appendChild(currentDom)
+    }
+  }
+}
+
 function commitUpdate(fiber: MyFiber) {
   if (!fiber) return;
   if (isHostComponent(fiber)) {
@@ -172,7 +210,7 @@ function commitLayoutEffectOrRef(fiber: MyFiber) {
 function commitWork(fiber: MyFiber) {
   if (!fiber || fiber.flags === NOEFFECT) return;
 
-  // console.error('commitWork', logEffectType(fiber), _.cloneDeep(fiber));
+  console.error('commitWork', logEffectType(fiber), _.cloneDeep(fiber));
 
   // if (fiber.flags & DELETE) {
   //   commitDelete(fiber);
@@ -187,6 +225,11 @@ function commitWork(fiber: MyFiber) {
     // console.log('commitUpdate', fiber)
     commitUpdate(fiber);
     fiber.flags &= ~UPDATE
+  }
+
+  if (fiber.flags & INSERTBEFORE) {
+    commitInsertBefore(fiber);
+    fiber.flags &= ~INSERTBEFORE
   }
 
   // if (fiber.flags !== NOEFFECT) {
@@ -210,9 +253,7 @@ port2.onmessage = (e) => {
       return;
     }
 
-    handleEffect(EFFECT_PASSIVE, rootFiber)
-    rootFiber.updateQueue.firstEffect = null;
-    rootFiber.updateQueue.lastEffect = null;
+    handleEffect(EFFECT_PASSIVE, rootFiber);
     //  console.error('commit-after', _.cloneDeep({ rootFiber }))
     setIsFlushEffecting(false);
     //  console.log('after-render', _.cloneDeep({ rootFiber}))
@@ -251,7 +292,7 @@ export function handleEffect(tag: number, rootFiber: MyFiber, jumpReRender = fal
 
   runInBatchUpdate(() => {
     setCurrentContext(DESTROY_CONTEXT)
-    // console.log(_.cloneDeep({ destroyList, createList, rootFiber }))
+    // console.log('重置队伍', _.cloneDeep({ destroyList, createList, rootFiber }))
     while (destroyList.length) {
       destroyList.shift()()
     }

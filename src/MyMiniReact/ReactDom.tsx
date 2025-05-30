@@ -53,11 +53,12 @@ export function ensureRootIsScheduled(isSync: boolean) {
 
 export function reRender(isSync: boolean) {
   if (!getIsRendering()) {
+    // console.log('重新渲染---->')
     if (getIsFlushEffecting()) {
-      // console.error('提前执行useEffect')
-      handleEffect(EFFECT_PASSIVE, rootFiber, true)
-      wipRoot.updateQueue.lastEffect = null;
-      wipRoot.updateQueue.firstEffect = null;
+      // console.error('提前执行useEffect', _.cloneDeep(rootFiber))
+      handleEffect(EFFECT_PASSIVE, wipRoot, true)
+      // wipRoot.updateQueue.lastEffect = null;
+      // wipRoot.updateQueue.firstEffect = null;
       setIsFlushEffecting(false)
     }
     setIsRendering(true);
@@ -68,7 +69,7 @@ export function reRender(isSync: boolean) {
     } else {
       requestIdleCallback(workLoop);
     }
-  }
+  } 
 }
 
 export function scheduleRootFiber(rootFiber3: MyFiber, isSync: boolean) {

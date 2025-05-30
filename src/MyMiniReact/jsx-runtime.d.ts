@@ -1,4 +1,4 @@
-import { MyElement, MyJSX } from "./type";
+import { MyElement, MyElementType, MyJSX } from "./type";
 
 declare namespace JSX {
   interface IntrinsicElements {
@@ -10,6 +10,18 @@ declare namespace JSX {
 
   interface IntrinsicAttributes {
     key?: string | number;
+  }
+
+  interface ElementClass {
+    render(): Element;
+  }
+
+  interface ElementAttributesProperty {
+    props: {};
+  }
+
+  interface ElementChildrenAttribute {
+    children: {};
   }
 }
 

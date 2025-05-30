@@ -1,10 +1,15 @@
 import _ from "lodash";
-import { MyFiber } from "./type";
-import { HOSTCOMPONENT, isInDebugger, MyReactFiberKey } from "./const";
+import { MyFiber, MyStateNode } from "./type";
+import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, TEXTCOMPONENT } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
 
+export function isTextComponent(fiber: MyFiber) {
+  return fiber.tag === TEXTCOMPONENT
+}
+
 export function isHostComponent(fiber: MyFiber) {
-  return fiber.tag === HOSTCOMPONENT
+  return fiber.tag === HOSTCOMPONENT || isTextComponent(fiber)
+  || fiber.tag === FRAGMENTCOMPONENT
 }
 
 export const findChildStateNode = (fiber: MyFiber | null) => {
@@ -17,7 +22,7 @@ export const findChildStateNode = (fiber: MyFiber | null) => {
   return findChildStateNode(fiber.child)
 }
 
-const map = new Map<string, Function>()
+const bodyMap = new Map<string, Function>()
 // export function getKeys(key: string) {
 //   if (!map.has(key)) {
 //     map.set(key, getUUID(key))
@@ -25,22 +30,32 @@ const map = new Map<string, Function>()
 //   return map.get(key)
 // }
 
+const weakMap = new WeakMap<MyStateNode, Map<string, Function>>();
+
 
 export function addEventListener(key: string, fiber: MyFiber) {
   // const rootFiber = getRootFiber(fiber);
-  const topDom: HTMLElement = document.body;
+  const topDom = fiberRoot.stateNode;
   if (!topDom) {
     throw new Error('')
   }
-  const uniqId = key;
-  // console.log('enter', map, key);
+  const isUseInDom =  ['onMouseEnter', 'onMouseLeave'].includes(key)
+
+  const uniqId: any = key;
+   if (!weakMap.has(fiber.stateNode)) {
+    weakMap.set(fiber.stateNode, new Map())
+  }
+  const map = isUseInDom ? weakMap.get(fiber.stateNode) : bodyMap;
+  const eventDom = isUseInDom ? fiber.stateNode : topDom;
   if (!map.has(uniqId)) {
     const fn = (e: Event) => {
+      // console.log(key.slice(2).toLowerCase(), e);
       const originstopPropagation = e.stopPropagation
       runInBatchUpdate(() => {
         let dom = e.target as HTMLElement;
         let jump = false;
         while (dom) {
+          // console.log(dom)
           const targetFiber: MyFiber = dom[MyReactFiberKey];
           if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key]) {
             e.stopPropagation = (...args: []) => {
@@ -61,7 +76,7 @@ export function addEventListener(key: string, fiber: MyFiber) {
         }
       })
     }
-    topDom.addEventListener(key.slice(2).toLowerCase(), fn)
+    eventDom.addEventListener(key.slice(2).toLowerCase(), fn)
     map.set(uniqId, fn);
   }
 
@@ -77,7 +92,7 @@ export function updateDom(fiber: MyFiber) {
     // fiber.memoizedProps = fiber.pendingProps;
 
     if (dom) {
-      if (fiber.type === 'text') {
+      if (isTextComponent(fiber)) {
         if (!(_.isNil(newProps) || _.isBoolean(newProps))) {
           dom.textContent = `${newProps}`;
         } else {
@@ -89,11 +104,17 @@ export function updateDom(fiber: MyFiber) {
       const oldProps = fiber.alternate?.memoizedProps || {};
       Object.keys(oldProps).forEach(key => {
         if (key === 'style') {
-          _.forEach(oldProps[key], (v, k) => {
+          const styles = (dom as HTMLElement).style || {};
+
+          _.forEach(styles, (v, k) => {
+            //  console.log(v, k, newProps[key]?.[k]);
+            
             if (_.isNil(newProps[key]?.[k])) {
-              (dom as HTMLElement).style[k] = undefined;
+              // console.log(dom, '移除掉', k);
+             Reflect.deleteProperty(styles, k);
             }
-          })
+          });
+          // (dom as HTMLElement).style = styles;
         } else if (key !== 'children' && newProps[key] === undefined) {
           dom[key] = undefined;
         }
@@ -116,6 +137,7 @@ export function updateDom(fiber: MyFiber) {
           } else {
             if (key === 'style') {
               _.forEach(newProps[key], (v, k) => {
+                // console.log('添加', dom, k, v);
                 (dom as HTMLElement).style[k] = v;
               })
             } else {
@@ -134,13 +156,15 @@ export function createDom(fiber: MyFiber) {
     // return fiberRoot.stateNode;
     return null;
   }
-  if (fiber.type === 'text') {
+  if (isTextComponent(fiber)) {
     fiber.stateNode = document.createTextNode(_.isNil(fiber.pendingProps) || _.isBoolean(fiber.pendingProps) ? '' : `${fiber.pendingProps}` as string);
     fiber.stateNode[MyReactFiberKey] = fiber;
+    // console.log('创建dom', fiber.stateNode)
     return fiber.stateNode;
   }
   if (isHostComponent(fiber)) {
-    const dom = document.createElement(fiber.type as keyof HTMLElementTagNameMap);
+    const dom = document.createElement(
+      fiber.tag === FRAGMENTCOMPONENT ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
     fiber.stateNode = dom;
     updateDom(fiber);
     let f = fiber.child;
@@ -153,7 +177,7 @@ export function createDom(fiber: MyFiber) {
       }
       f = f.sibling;
     }
-    // console.log(dom, '添加', ret)
+    // console.log(dom, '添加', ret, fiber)
     return dom;
   }
   return null;

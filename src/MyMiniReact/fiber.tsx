@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { commitRoot } from "./commit";
-import { FUNCTIONCOMPONENT, HOSTCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, wipRoot, workInProgress } from "./const";
+import { FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
@@ -14,6 +14,23 @@ export function createFiber(element: MyElement | null, index: number, alternateF
   // if (tag === ROOTCOMPONENT) {
   //   console.error(_.cloneDeep(alternateFiber), alternateFiber && getEffectListId(alternateFiber));
   // }
+
+  let fiberTag = tag;
+  if (_.isNil(fiberTag)) {
+    // console.log('fragment', element, window.reactFragmentType, element?.type === window.reactFragmentType)
+    if (isStringOrNumber(element)) {
+      fiberTag = TEXTCOMPONENT;
+    } else if (typeof element?.type === 'function') {
+      fiberTag = FUNCTIONCOMPONENT;
+     } else if (element?.type?.$$typeof === window.reactMemoType) {
+      fiberTag = MEMOCOMPONENT;
+     } else if (element?.type === window.reactFragmentType) {
+      fiberTag = FRAGMENTCOMPONENT;
+     } else {
+      fiberTag = HOSTCOMPONENT;
+     }
+  }
+
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id++,
     key: element?.key,
@@ -21,7 +38,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     type: (isStringOrNumber(element) ? 'text' : element?.type),
     flags: NOEFFECT,
     stateNode: null,
-    tag: (tag ?? (typeof element?.type === 'function' ? FUNCTIONCOMPONENT : HOSTCOMPONENT)),
+    tag: fiberTag,
     alternate: null,
     lanes: NOLANE,
     childLanes: NOLANE,
@@ -35,6 +52,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
       lastEffect: null,
     },
     index,
+    newInsertIndex: null,
     lastEffect: null,
     memoizedProps: {},
     memoizedState: null,
@@ -72,6 +90,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     newFiber.flags = alternateFiber.flags;
     newFiber.firstEffect = alternateFiber.firstEffect;
     newFiber.lastEffect = alternateFiber.lastEffect;
+    newFiber.newInsertIndex = alternateFiber.newInsertIndex;
 
     // console.log(_.cloneDeep({ newFiber }))
 
@@ -80,6 +99,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     alternateFiber.updateQueue.lastEffect = null;
     alternateFiber.firstEffect = null;
     alternateFiber.lastEffect = null;
+    alternateFiber.newInsertIndex = null;
 
     alternateFiber.flags = NOEFFECT;
     alternateFiber.alternate = newFiber;

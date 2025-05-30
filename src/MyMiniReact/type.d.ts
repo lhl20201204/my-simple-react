@@ -13,9 +13,19 @@ export type MyRef = {
 
 export type MyFunctionComponent = (props: MyProps, ref?: MyRef) => MyElement;
 
+export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyElement ? f : never;
+
+export type MyMemoComponent<T extends MyFunctionComponent> = {
+  $$typeof: Symbol;
+  compare: null | ((x: MyFunctionComponentProps<T>, y: MyFunctionComponentProps<T>) => boolean),
+  type: T
+}
+
 export type MyClassComponent = new (props: MyProps, context: any) => MyElement;
 
-export type MyElementType = 'root' | 'div' | 'text' | 'span' | MyFunctionComponent | MyClassComponent;
+export type MyElementType = 'root' | keyof HTMLElementTagNameMap
+ | MyFunctionComponent | MyClassComponent | MyMemoComponent
+| Symbol;
 
 export type MyElmemetKey = string | number | null | undefined
 export type MyElement = {
@@ -101,6 +111,7 @@ export type MyFiber = {
   firstEffect: MyFiber | null;
   flags: IFLAGS;
   index: number;
+  newInsertIndex?: number;
   lanes: number;
   childLanes: number;
   key: MyElmemetKey;

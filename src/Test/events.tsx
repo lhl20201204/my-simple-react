@@ -22,10 +22,10 @@ export default class EventEmitter<Events extends Record<string, any> = Record<st
   }
 }
 
-const x = new EventEmitter();
+// const x = new EventEmitter();
 
-x.on('eeee', (t: { x: number }) => {
-  console.log(t)
-})
+// x.on('eeee', (t: { x: number }) => {
+//   console.log(t)
+// })
 
-x.emit('eeee', { x: 1})
+// x.emit('eeee', { x: 1})

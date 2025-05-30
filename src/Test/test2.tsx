@@ -50,7 +50,7 @@ function App2({ id, children }: {id: string, children?: any}) {
 function App() {
   const [bol, setBol] = useState(true)
   const [cnt, setCnt] = useState(1)
-  const ref = useRef()
+  const ref = useRef(null)
   console.log('App-render')
   useEffect(() => {
     console.log([...set]);

@@ -51,7 +51,7 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
       const currentFiber = rootFiber ? findTagFiber(fiber, rootFiber) :
         wipRoot ? findTagFiber(fiber, wipRoot) : fiber;
       
-      if (!_.isFunction(x) && x !== newHook.memoizeState && !(currentFiber.flags & UPDATE)) {
+      if ((_.isFunction(x) || x !== newHook.memoizeState) && !(currentFiber.flags & UPDATE)) {
           setFiberWithFlags(currentFiber, UPDATE)
       }
       // console.log('setState', { currentFiber }, logFiberIdPath(currentFiber))
