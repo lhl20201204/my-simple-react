@@ -29,6 +29,7 @@ export type MyElementType = 'root' | keyof HTMLElementTagNameMap
 
 export type MyElmemetKey = string | number | null | undefined
 export type MyElement = {
+  elementId: number;
   $$typeof: Symbol
   type: MyElementType;
   props: MyProps;
@@ -85,6 +86,7 @@ export type IEffectHook = {
   destroy: (() => void) | void,      // 清理函数
   deps: Array<any> | null,   // 依赖项
   pendingDeps?: Array<any> | null,
+  fiber: MyFiber,
   next: IEffectHook | null,  //           // 指向下一个 effect，形成链表
 }
 
@@ -111,7 +113,6 @@ export type MyFiber = {
   firstEffect: MyFiber | null;
   flags: IFLAGS;
   index: number;
-  newInsertIndex?: number;
   lanes: number;
   childLanes: number;
   key: MyElmemetKey;
@@ -119,6 +120,7 @@ export type MyFiber = {
     firstEffect: null | IEffectHook,
     lastEffect: null | IEffectHook,
   }
+  element: MyElement | null;
   lastEffect: MyFiber | null;
   hook: IHook[];
   memoizedProps: MyProps;

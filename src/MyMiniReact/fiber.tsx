@@ -1,10 +1,11 @@
 import _ from "lodash";
-import { commitRoot } from "./commit";
+import { commitRoot, disconnectElementAndFiber } from "./commit";
 import { FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
+import { originConsoleLog, trackFiber } from "./test";
 
 
 let id = 0;
@@ -31,6 +32,8 @@ export function createFiber(element: MyElement | null, index: number, alternateF
      }
   }
 
+  const needNewCreate = !alternateFiber?.alternate;
+
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id++,
     key: element?.key,
@@ -51,8 +54,8 @@ export function createFiber(element: MyElement | null, index: number, alternateF
       firstEffect: null,
       lastEffect: null,
     },
+    element: element,
     index,
-    newInsertIndex: null,
     lastEffect: null,
     memoizedProps: {},
     memoizedState: null,
@@ -61,9 +64,13 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     return: null,
     sibling: null,
   }
+  if (needNewCreate) {
+    trackFiber(newFiber);
+  }
   newFiber.child = null;
   newFiber.sibling = null;
   newFiber.index = index;
+  newFiber.element = element;
 
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
@@ -90,7 +97,6 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     newFiber.flags = alternateFiber.flags;
     newFiber.firstEffect = alternateFiber.firstEffect;
     newFiber.lastEffect = alternateFiber.lastEffect;
-    newFiber.newInsertIndex = alternateFiber.newInsertIndex;
 
     // console.log(_.cloneDeep({ newFiber }))
 
@@ -99,18 +105,19 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     alternateFiber.updateQueue.lastEffect = null;
     alternateFiber.firstEffect = null;
     alternateFiber.lastEffect = null;
-    alternateFiber.newInsertIndex = null;
 
     alternateFiber.flags = NOEFFECT;
     alternateFiber.alternate = newFiber;
     alternateFiber.hook = [];
     alternateFiber.memoizedProps = alternateFiber.pendingProps;
+    disconnectElementAndFiber(alternateFiber)
     // alternateFiber.pendingProps = {};
     alternateFiber.lanes = NOLANE;
-    alternateFiber.childLanes = NOLANE;;
+    alternateFiber.childLanes = NOLANE;
   }
   if (_.has(element, '_owner')) {
-    element._owner = newFiber;
+    // originConsoleLog('添加_owner', element, newFiber)
+    // element._owner = newFiber;
   }
   // if (tag === ROOTCOMPONENT) {
   //   console.error(getCommitEffectListId(newFiber), _.cloneDeep(newFiber))

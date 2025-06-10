@@ -1,7 +1,7 @@
 import { ReactDOM, sleep, useCallback, useEffect, useLayoutEffect, useMemo } from './utils'
 import { payloadChildState, useChildState, useParentState } from "./useGroupState";
 
-const Parent = (props: { children: any }) => {
+const Parent = (props: { children?: any }) => {
   const [state, setState, setInnerState] = useParentState('test', 0);
   console.log('Parent', state);
 

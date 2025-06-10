@@ -3,7 +3,6 @@ import { DEFAULTLANE, EFFECT_PASSIVE, getBatchUpdating, getIsFlushEffecting, get
 import { createFiber, syncWorkLoop, workLoop } from "./fiber";
 import { MyElement, MyFiber, MyStateNode, MyTask } from "./type";
 import { handleEffect } from "./commit";
-import { getEffectListId } from "./utils";
 
 
 export const taskQueue: MyTask[] = [];
@@ -27,17 +26,7 @@ export function ensureRootIsScheduled(isSync: boolean) {
 
   //  console.log('重新从root开始渲染');
 
-  const newWipRoot = createFiber({
-    $$typeof: window.reactType,
-    type: 'root',
-    props: originRootFiber.pendingProps,
-    key: null,
-    ref: null,
-    _owner: null,
-    _store: {
-      validated: false
-    }
-  }, 0, originRootFiber, ROOTCOMPONENT);
+  const newWipRoot = createFiber(originRootFiber.element, 0, originRootFiber, ROOTCOMPONENT);
   //  console.error( _.cloneDeep({
   //   wipRoot,
   //   newWipRoot,
@@ -97,6 +86,7 @@ export function createRoot(rootNode: MyStateNode) {
     render: (element: MyElement) => {
       // console.log('element', { element})
       const rootFiber2 = createFiber({
+        elementId: 0,
         $$typeof: window.reactType,
         type: 'root',
         props: {

@@ -1,10 +1,10 @@
 import { ReactDOM } from "./MyMiniReact";
-import WindomDom from "./Test/test3";
+import A from "./Test/exports";
 
-window.WindomDom = WindomDom;
+window.WindomDom = A;
 window.promiseResolve2();
 
 if (window.useSelfReact) {
         ReactDOM.createRoot(document.getElementById('app') as HTMLElement)
-        .render(WindomDom)
+        .render(window.WindomDom)
 }

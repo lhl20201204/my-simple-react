@@ -13,9 +13,9 @@ export const UPDATE = 0b00000010;
 
 export const DELETE = 0b00000100;
 
-export const EFFECTHOOK = 0b00001000;
+export const PASSIVE_FLAGS = 0b00001000;
 
-export const LAYOUT_EFFECT_HOOK = 0b00010000;
+export const LAYOUT_FLAGS = 0b00010000;
 
 export const REFEFFECT = 0b00100000;
 
@@ -36,9 +36,9 @@ export const EffECTDicts = {
   [DELETE]: 'delete',
   [UPDATE]: 'update',
   [NOEFFECT]: 'noEffect',
-  [EFFECTHOOK]: 'effectHook',
+  [PASSIVE_FLAGS]: 'PASSIVE_FLAGS',
   [REFEFFECT]: 'refEffect',
-  [LAYOUT_EFFECT_HOOK]: 'layoutEffectHook',
+  [LAYOUT_FLAGS]: 'layoutEffectHook',
   [INSERTBEFORE]: 'insertBefore'
 };
 

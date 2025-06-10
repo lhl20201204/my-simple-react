@@ -110,7 +110,7 @@ export function logEffectType(fiber: MyFiber) {
       ret.push(v)
     }
   })
-  return ret.join(',')
+  return ret.join(',') || 'noEffect'
 }
 
 export function logFiberTree(fiber: MyFiber) {
@@ -153,12 +153,13 @@ export function logFiberTree(fiber: MyFiber) {
   renderTree(dom, dfs(fiber))
 }
 
-export function getEffectListId(fiber: MyFiber) {
+export function getEffectListId(fiber: MyFiber, onlyId = false) {
   let f = fiber.updateQueue?.firstEffect;
   let endEffect = fiber.updateQueue?.lastEffect?.next ?? null;
   const ret = []
   while (f && f !== endEffect) {
-    ret.push([f.id, f.tag & EFFECT_LAYOUT ? 'layout' : 'passive',
+    ret.push(onlyId ? f.id :[f.id,
+   f.tag & EFFECT_LAYOUT ? 'layout' : 'passive',
     f.tag & EFFECT_HOOK_HAS_EFFECT ? 'effect' : ''
     ].join('-'))
     f = f.next;

@@ -6,6 +6,7 @@ import { getEffectListId, getPropsByElement, isPropsEqual, isStringOrNumber, log
 import { sumbitEffect } from "./completeWork";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 import { isTextComponent } from "./dom";
+import { getElementId } from "./jsx-dev-runtime";
 
 export * from './hook'
 
@@ -30,6 +31,7 @@ function canDiff(fiber: MyFiber, child?: MyElement) {
 }
 
 function findFiberByKeyAndType(list: MyFiber[], child?: MyElement) {
+  // console.log('findFiberByKeyAndType',_.cloneDeep({ list, child}))
   const index = list.findIndex(c => canDiff(c, child));
   return index > -1 ? list.splice(index, 1)[0] : null;
 }
@@ -49,10 +51,13 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
   }
 
   // console.log('old', [...totalFiberList]);
+  // console.log('------', _.cloneDeep({fiber, totalFiberList}))
 
   const adjustFiberList = [];
 
   let retFiber: MyFiber | null = null;
+
+  let lastFiber: MyFiber | null = null;
 
   while (index < children.length || totalFiberList.length) {
     const child = children[index];
@@ -62,11 +67,12 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
     let newFiber: MyFiber | null = null;
 
     // console.log(_.cloneDeep({
+    //   index,
     //   child,
     //   oldFiberSibling,
     //   fiber,
     //   isSameType,
-    //   bol: isSameType && isPropsEqual(getPropsByElement(child), oldFiberSibling.pendingProps)
+    //   bol: isSameType && isPropsEqual(getPropsByElement(child), oldFiberSibling.pendingProps, oldFiberSibling)
     // }))
 
     if (isSameType) {
@@ -134,81 +140,98 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
           retFiber = newFiber;
         }
         newFiber.return = fiber;
-        setFiberWithFlags(newFiber, getFlags(fiber))
+        setFiberWithFlags(newFiber, getFlags(fiber));
         // console.log('替换', _.cloneDeep(newFiber), logFiberIdPath(newFiber), logFiberIdPath(fiber));
-      } 
+      }
     } else {
       console.error('未处理的情况----》')
       throw new Error('未处理的情况----》')
     }
 
     if (!newFiber && index < children.length) {
-      console.error('newFiber为空', _.cloneDeep({fiber, index}))
+      console.error('newFiber为空', _.cloneDeep({ fiber, index }))
       throw new Error('newFiber为空')
     }
 
     // console.log('---------\n', index, newFiber)
 
     if (newFiber) {
-      adjustFiberList.push([newFiber.index, newFiber])
+      adjustFiberList.push([newFiber.index, newFiber, index])
       newFiber.index = index;
+      lastFiber = newFiber;
     }
 
     if (index === 0) {
       fiber.child = newFiber;
+      // if (fiber.alternate) {
+      //   fiber.alternate.child = null;
+      // }
     } else {
       if (prevSibling) {
         prevSibling.sibling = newFiber;
-      } 
+      }
     }
     prevSibling = newFiber;
     oldFiberSibling = oldFiberSibling?.sibling ?? null;
     index++;
+  }
+  if (lastFiber) {
+    lastFiber.sibling = null;
   }
   // console.log(_.cloneDeep(fiber))
   // console.log('retFiber', retFiber)
   // if (!retFiber) {
   //   console.error('retFiber为空', _.cloneDeep(fiber))
   // }
-  const newRetList = [];
-  let f2 = fiber.child;
-  while(f2) {
-    newRetList.push(f2);
-    f2 = f2.sibling;
-  }
+  // const newRetList = [];
+  // let f2 = fiber.child;
+  // while (f2) {
+  //   newRetList.push(f2);
+  //   f2 = f2.sibling;
+  // }
 
-  const dp: [number, number[]][] = new Array(adjustFiberList.length).fill(0).map((c , i)=> [1, [i]]);
+  const dp: [number, number[]][] = new Array(adjustFiberList.length).fill(0).map((c, i) => [1, [i]]);
   const arr = _.map(adjustFiberList, '0');
   let ret = [0];
-  for(let i = 0; i < arr.length; i++) {
-    for(let j = 0; j < i; j++) {
+  for (let i = 0; i < arr.length; i++) {
+    for (let j = 0; j < i; j++) {
       if (arr[i] > arr[j]) {
-       if (dp[j][0] + 1 >= dp[i][0]) {
-        const newRet = [...dp[j][1], i];
-        dp[i] = [ dp[j][0] + 1, newRet];
-        if (_.size(newRet) >= _.size(ret)) {
-          ret = newRet;
+        if (dp[j][0] + 1 >= dp[i][0]) {
+          const newRet = [...dp[j][1], i];
+          dp[i] = [dp[j][0] + 1, newRet];
+          if (_.size(newRet) >= _.size(ret)) {
+            ret = newRet;
+          }
         }
-       }
       }
     }
   }
-  console.log(arr, ret);
+  // console.log(arr, ret);
   if (_.size(ret) !== adjustFiberList.length) {
-    const finnalAdjustFiberList = [];
-    for(let i = 0; i < adjustFiberList.length; i++) {
-       if (!_.includes(ret, i)) {
-        const fistBigIndex = _.find(ret, (c) => c > i);
-        
-        const newInsertIndex = fistBigIndex > -1 ? adjustFiberList[fistBigIndex][1].index : -1;
-        adjustFiberList[i][1].newInsertIndex = newInsertIndex;
-        finnalAdjustFiberList.push(adjustFiberList[i][1]);
-        console.warn(ret,adjustFiberList[i][1], newInsertIndex);
+    // const finnalAdjustFiberList = [];
+    for (let i = 0; i < adjustFiberList.length; i++) {
+      if (!_.includes(ret, i)) {
+        // const fistBigIndex = _.find(ret, (c) => c > i);
+
+        // const newInsertIndex = fistBigIndex > -1 ? adjustFiberList[fistBigIndex][1].index : -1;
+        // adjustFiberList[i][1].newInsertIndex = newInsertIndex;
+        // finnalAdjustFiberList.push(adjustFiberList[i][1]);
+        // console.warn(ret,adjustFiberList[i][1], newInsertIndex);
         adjustFiberList[i][1].flags |= INSERTBEFORE;
-       }
+        if (!retFiber || adjustFiberList[i][1].index < retFiber.index) {
+          retFiber = adjustFiberList[i][1];
+        }
+        // setFiberWithFlags(adjustFiberList[i][1], INSERTBEFORE);
+      }
     }
     // console.log('new', _.cloneDeep({ newRetList, adjustFiberList, ret, finnalAdjustFiberList } ))
   }
+
+  if (fiber.alternate) {
+    fiber.alternate.child = null;
+    fiber.alternate.sibling = null;
+  }
+
   return retFiber ?? fiber.child;
 }
 
@@ -217,52 +240,90 @@ function resetLaneProps(fiber: MyFiber) {
   fiber.lanes = NOLANE;
 }
 
+function cloneChildFiber(parentFiber: MyFiber) {
+  let oldFiberSibling = parentFiber.child;
+  let newFiber: MyFiber | null = null;
+  let retFiber: MyFiber | null = null;
+  let prevSibling: MyFiber | null = null;
+  while(oldFiberSibling) {
+    if (oldFiberSibling.lanes === NOLANE ||
+      oldFiberSibling.flags === NOEFFECT
+    ) {
+      newFiber = oldFiberSibling
+      if (oldFiberSibling.childLanes !== NOLANE && !retFiber) {
+        retFiber = newFiber;
+      }
+      newFiber.return = parentFiber;
+      // console.log('自己没有更新', _.cloneDeep(oldFiberSibling), '重定向父亲', _.cloneDeep(fiber));
+    }
+    else {
+      newFiber = createFiber(oldFiberSibling.element, oldFiberSibling.index, oldFiberSibling);
+      if (!retFiber) {
+        retFiber = newFiber;
+      }
+      newFiber.return = parentFiber;
+      //  console.warn('自己有更新', _.cloneDeep({oldFiberSibling}), isPropsEqual(newFiber.pendingProps, oldFiberSibling.memoizedProps), logFiberIdPath(newFiber));
+    }
+    if (newFiber.index === 0) {
+      parentFiber.child = newFiber;
+    } else {
+      prevSibling.sibling = newFiber;
+    }
+    prevSibling = newFiber;
+    oldFiberSibling = oldFiberSibling.sibling;
+  }
+  return retFiber ?? parentFiber.child;
+}
+
 export function handleFunctionComponent(fiber: MyFiber) {
-  
-    // if (fiber.alternate && isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps) && 
-    // fiber.lanes === NOLANE && fiber.childLanes !== NOLANE) {
-    //   console.log(fiber.id, '跳过函数重新渲染，直接进入儿子')
-    //   return fiber.child;
-    // }
-    // console.error('fiber', fiber.id, fiber.lanes, _.cloneDeep(fiber))
-    if (fiber.lanes === NOLANE) {
-      // console.log(fiber.id, '本身不用更新', _.cloneDeep(fiber));
-      return fiber.child;
+
+  // if (fiber.alternate && isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps) && 
+  // fiber.lanes === NOLANE && fiber.childLanes !== NOLANE) {
+  //   console.log(fiber.id, '跳过函数重新渲染，直接进入儿子')
+  //   return fiber.child;
+  // }
+  // console.error('fiber', fiber.id, fiber.lanes, _.cloneDeep(fiber))
+  if (fiber.lanes === NOLANE) {
+    // console.log(fiber.id, '本身不用更新', _.cloneDeep(fiber));
+    if (fiber.childLanes !== NOLANE) {
+      return cloneChildFiber(fiber)
     }
+    return fiber.child;
+  }
 
-    hookIndex = 0;
-    const preFiber = currentlyFiber;
-    // 这里渲染过程中检测到有新的更新，该怎么做？
+  hookIndex = 0;
+  const preFiber = currentlyFiber;
+  // 这里渲染过程中检测到有新的更新，该怎么做？
 
 
-    currentlyFiber = fiber;
+  currentlyFiber = fiber;
 
-    // console.log(_.cloneDeep({ fiber, path: getEffectListId(fiber) }))
+  // console.log(_.cloneDeep({ fiber, path: getEffectListId(fiber) }))
 
-    const preBol = getBatchUpdating()
-    setBatchUpdating(true)
-    fiber.flags &= ~UPDATE;
-    const elements = (fiber.type as Function)(fiber.pendingProps);
-    currentlyFiber = preFiber;
-    const next = reconcileChildren(fiber, [elements]);
-    setBatchUpdating(preBol)
-    // 重新进来的时候，这里没有alternate。
-    if (fiber.flags & UPDATE) {
-      // console.log({
-      //   workInProgress,
-      //   fiber
-      // })
-      // console.log('组件渲染过程中有更新', getEffectListId(wipRoot), _.cloneDeep(
-      //   {wipRoot}
-      // ));
-      ensureRootIsScheduled(false)
-      // resetLaneProps(fiber)
-      return workInProgress;
-    }
-    resetLaneProps(fiber)
-    // console.log({ next, bol: workInProgress === fiber });
-    return next;
-  
+  const preBol = getBatchUpdating()
+  setBatchUpdating(true)
+  fiber.flags &= ~UPDATE;
+  const elements = (fiber.type as Function)(fiber.pendingProps);
+  currentlyFiber = preFiber;
+  const next = reconcileChildren(fiber, [elements]);
+  setBatchUpdating(preBol)
+  // 重新进来的时候，这里没有alternate。
+  if (fiber.flags & UPDATE) {
+    // console.log({
+    //   workInProgress,
+    //   fiber
+    // })
+    // console.log('组件渲染过程中有更新', getEffectListId(wipRoot), _.cloneDeep(
+    //   {wipRoot}
+    // ));
+    ensureRootIsScheduled(false)
+    // resetLaneProps(fiber)
+    return workInProgress;
+  }
+  resetLaneProps(fiber)
+  // console.log({ next, bol: workInProgress === fiber });
+  return next;
+
 }
 
 // let debugggerIndex  =0;
@@ -300,15 +361,16 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     const next = reconcileChildren(fiber,
       [
         {
-        $$typeof: window.reactType,
-        type: fiber.type.type,
-        props: fiber.pendingProps,
-        ref: null,
-        _owner: null,
-        _store: null,
-        key: fiber.key
-      }
-    ]
+          elementId: -3,
+          $$typeof: window.reactType,
+          type: fiber.type.type,
+          props: fiber.pendingProps,
+          ref: null,
+          _owner: null,
+          _store: null,
+          key: fiber.key
+        }
+      ]
     );
     resetLaneProps(fiber)
     return next;

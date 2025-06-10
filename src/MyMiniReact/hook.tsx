@@ -1,23 +1,39 @@
 import _ from "lodash";
-import { addHookIndex, currentlyFiber, getRootFiber, setFiberWithFlags } from "./beginWork";
+import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
 import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber } from "./type";
-import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, EFFECTHOOK, getBatchUpdating, getCurrentContext, LAYOUT_EFFECT_HOOK, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot } from "./const";
+import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot } from "./const";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 import { isDepEqual, logFiberIdPath } from "./utils";
 
-function findTagFiber(fiber: MyFiber, parentFiber: MyFiber) {
-  let f = parentFiber.child;
-  while (f) {
-    if (fiber === f || (fiber.alternate && fiber.alternate === f)) {
-      return f
-    }
-    const ret = findTagFiber(fiber, f);
-    if (ret) {
-      return ret;
-    }
-    f = f.sibling;
+function findFiberPath(fiber: MyFiber) {
+  const ret = [];
+  while(fiber) {
+    ret.push(fiber);
+    fiber = fiber.return;
   }
-  return null;
+  return ret;
+}
+
+function findTagFiber(fiber: MyFiber, path: MyFiber[], rootFiber: MyFiber) {
+  // originConsoleLog([...path])
+  let p = rootFiber;
+  while(path.length && p === path[path.length - 1]) {
+    // p = p.child;
+    let c = p.child;
+    let f = p;
+    path.pop();
+    while (c) {
+      if (c === path[path.length - 1]) {
+        p = c;
+      }
+      c = c.sibling;
+    }
+    if (p === f) {
+      break;
+    }
+  }
+  // originConsoleLog(path.length, fiber.alternate, fiber, rootFiber);
+  return path.length ? fiber.alternate : fiber;
 }
 
 export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) => void] {
@@ -42,25 +58,29 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
     memoizeState: v,
     updateList,
     dispatchAction: (x: IDispatchValue<T>) => {
-      
-      const currentRootFiber = getRootFiber(fiber);
+      const path = findFiberPath(fiber);
+      const currentRootFiber = path[path.length - 1];
       if (currentRootFiber.tag !== ROOTCOMPONENT) {
         // console.warn('组件已经卸载')
         return;
       }
-      const currentFiber = rootFiber ? findTagFiber(fiber, rootFiber) :
-        wipRoot ? findTagFiber(fiber, wipRoot) : fiber;
+      const currentFiber = rootFiber ? findTagFiber(fiber, path, rootFiber) :
+        wipRoot ? findTagFiber(fiber, path, wipRoot) : fiber;
+
+      const oldValue = newHook.memoizeState;
       
-      if ((_.isFunction(x) || x !== newHook.memoizeState) && !(currentFiber.flags & UPDATE)) {
-          setFiberWithFlags(currentFiber, UPDATE)
-      }
-      // console.log('setState', { currentFiber }, logFiberIdPath(currentFiber))
+      // console.error('setState', _.cloneDeep({ currentFiber }), logFiberIdPath(currentFiber))
       if (!(currentFiber.flags & UPDATE) && !currentlyFiber && getCurrentContext() !== DESTROY_CONTEXT) {
         newHook.memoizeState = _.isFunction(x) ? x(newHook.memoizeState) : x;
       } else {
         updateList.push(x);
       }
-      if (!getBatchUpdating()) {
+
+      if ((_.isFunction(x) || x !== oldValue) && !(currentFiber.flags & UPDATE)) {
+        setFiberWithFlags(currentFiber, UPDATE)
+      }
+
+      if (!getBatchUpdating() && !!(currentFiber.flags & UPDATE)) {
         ensureRootIsScheduled(true)
       }
     }
@@ -83,7 +103,7 @@ export function pushEffect(fiber: MyFiber, newHook: IEffectHook) {
 let effectId = 0;
 
 export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
-  flags: typeof EFFECTHOOK | typeof LAYOUT_EFFECT_HOOK
+  flags: typeof PASSIVE_FLAGS | typeof LAYOUT_FLAGS
 ) => {
   return function useEffect(create: () => (() => void) | void, deps: unknown[]) {
     const fiber: MyFiber = currentlyFiber;
@@ -124,6 +144,7 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
       tag: tag | EFFECT_HOOK_HAS_EFFECT, // TODO,
       create,
       destroy: null,
+      fiber,
       deps,
       next: null
     }
@@ -135,9 +156,9 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
   }
 }
 
-export const MyUseEffect = getEffectFn(EFFECT_PASSIVE, EFFECTHOOK);
+export const MyUseEffect = getEffectFn(EFFECT_PASSIVE, PASSIVE_FLAGS);
 
-export const MyUseLayoutEffect = getEffectFn(EFFECT_LAYOUT, LAYOUT_EFFECT_HOOK);
+export const MyUseLayoutEffect = getEffectFn(EFFECT_LAYOUT, LAYOUT_FLAGS);
 
 
 export function MyUseRef<T>(x: T): { current: T } {

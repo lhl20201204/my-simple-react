@@ -2,6 +2,7 @@ import { useState } from "./utils";
 
  function App() {
   const [isFancy, setIsFancy] = useState(false);
+  console.log('render-isFancy', isFancy)
   return (
     <div>
       {isFancy ? (
@@ -14,6 +15,7 @@ import { useState } from "./utils";
           type="checkbox"
           checked={isFancy}
           onChange={e => {
+            console.log('change', e.target.checked)
             setIsFancy(e.target.checked)
           }}
         />

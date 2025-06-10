@@ -115,6 +115,7 @@ export function updateDom(fiber: MyFiber) {
             }
           });
           // (dom as HTMLElement).style = styles;
+          Reflect.set(dom, 'style', styles);
         } else if (key !== 'children' && newProps[key] === undefined) {
           dom[key] = undefined;
         }
