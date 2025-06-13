@@ -1,6 +1,7 @@
-import { MyFunctionComponent, MyFunctionComponentProps, MyMemoComponent } from "./type";
+import { MyForwardRefComponent, MyFunctionComponent, MyFunctionComponentProps, MyMemoComponent } from "./type";
 
-export function MyMemo<T extends MyFunctionComponent>(Comp: T, 
+export function MyMemo<G extends MyFunctionComponent ,T extends MyFunctionComponent | MyForwardRefComponent<
+G>>(Comp: T, 
   comp?: (oldProps: MyFunctionComponentProps<T>, newProps: MyFunctionComponentProps<T>) => boolean ): MyMemoComponent<T> {
     return {
       $$typeof: window.reactMemoType,
@@ -8,3 +9,10 @@ export function MyMemo<T extends MyFunctionComponent>(Comp: T,
       compare: comp ?? null,
     };
   }
+
+export function MyForwardRef<T extends MyFunctionComponent>(Comp: T): MyForwardRefComponent<T> {
+  return {
+    $$typeof: window.reactForwardRefType,
+    render: Comp
+  }
+}

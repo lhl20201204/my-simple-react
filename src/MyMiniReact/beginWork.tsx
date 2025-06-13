@@ -1,11 +1,11 @@
 import _ from "lodash";
-import { DEFAULTLANE, DELETE, deletions, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, setBatchUpdating, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
+import { DEFAULTLANE, DELETE, deletions, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, setBatchUpdating, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
 import { createFiber } from "./fiber";
 import { MyElement, MyElementType, MyElmemetKey, MyFiber } from "./type";
 import { getEffectListId, getPropsByElement, isPropsEqual, isStringOrNumber, logEffectType, logFiberIdPath } from "./utils";
 import { sumbitEffect } from "./completeWork";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
-import { isTextComponent } from "./dom";
+import { isHostComponent, isTextComponent } from "./dom";
 import { getElementId } from "./jsx-dev-runtime";
 
 export * from './hook'
@@ -88,7 +88,7 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
         }
         newFiber.return = fiber;
         let flags = UPDATE;
-        if (newFiber.ref && newFiber.ref !== oldFiberSibling.ref) {
+        if (isHostComponent(newFiber) && newFiber.ref && newFiber.ref !== oldFiberSibling.ref) {
           flags |= REFEFFECT;
         }
         // console.log(getPropsByElement(child), oldFiberSibling.memoizedProps, 'Update', _.cloneDeep(newFiber))
@@ -123,7 +123,7 @@ function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
         retFiber = newFiber;
       }
       newFiber.return = fiber;
-      if (newFiber.ref) {
+      if (isHostComponent(newFiber) && newFiber.ref) {
         flags |= REFEFFECT;
       }
       setFiberWithFlags(newFiber, flags)
@@ -275,7 +275,7 @@ function cloneChildFiber(parentFiber: MyFiber) {
   return retFiber ?? parentFiber.child;
 }
 
-export function handleFunctionComponent(fiber: MyFiber) {
+export function handleFunctionComponent(fiber: MyFiber, isRef: boolean) {
 
   // if (fiber.alternate && isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps) && 
   // fiber.lanes === NOLANE && fiber.childLanes !== NOLANE) {
@@ -303,7 +303,7 @@ export function handleFunctionComponent(fiber: MyFiber) {
   const preBol = getBatchUpdating()
   setBatchUpdating(true)
   fiber.flags &= ~UPDATE;
-  const elements = (fiber.type as Function)(fiber.pendingProps);
+  const elements = (isRef ? fiber.type.render : fiber.type as Function)(fiber.pendingProps, isRef ? fiber.ref : undefined);
   currentlyFiber = preFiber;
   const next = reconcileChildren(fiber, [elements]);
   setBatchUpdating(preBol)
@@ -365,7 +365,7 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
           $$typeof: window.reactType,
           type: fiber.type.type,
           props: fiber.pendingProps,
-          ref: null,
+          ref: fiber.ref,
           _owner: null,
           _store: null,
           key: fiber.key
@@ -376,8 +376,8 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     return next;
   }
 
-  if (fiber.tag === FUNCTIONCOMPONENT) {
-    return handleFunctionComponent(fiber);
+  if (fiber.tag === FUNCTIONCOMPONENT || fiber.tag === FORWARDREFCOMPONENT) {
+    return handleFunctionComponent(fiber, fiber.tag === FORWARDREFCOMPONENT);
   }
 
   if (_.isNil(fiber.pendingProps?.children)) {

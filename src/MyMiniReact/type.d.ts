@@ -7,15 +7,23 @@ export type MyStateNode = null | MyDomNode | Text;
 
 export type MyState = Record<string, any>;
 
-export type MyRef = {
-  current: any;
-}
+export type MyRef<T> = {
+  current: T;
+};
+
+export type MyFiberRef = MyRef<any> | (((x: any) => void))
 
 export type MyFunctionComponent = (props: MyProps, ref?: MyRef) => MyElement;
 
-export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyElement ? f : never;
+export type MyForwardRefComponent<T extends MyFunctionComponent> = {
+  $$typeof: Symbol;
+  render: T
+}
 
-export type MyMemoComponent<T extends MyFunctionComponent> = {
+export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyElement ? f : 
+T extends MyForwardRefComponent<infer Y> ? MyFunctionComponentProps<Y> : never;
+
+export type MyMemoComponent<T extends MyFunctionComponent | MyForwardRefComponent> = {
   $$typeof: Symbol;
   compare: null | ((x: MyFunctionComponentProps<T>, y: MyFunctionComponentProps<T>) => boolean),
   type: T
@@ -127,7 +135,7 @@ export type MyFiber = {
   memoizedState: MyState;
   nextEffect: MyFiber | null;
   pendingProps: MyProps;
-  ref: MyRef | null;
+  ref: MyFiberRef | null;
   return: MyFiber | null;
   sibling: MyFiber | null;
   stateNode: MyStateNode;

@@ -1,11 +1,12 @@
 import { MyUseEffect,  MyUseRef, MyUseState ,
    MyUseCallback,
   MyUseMemo,
-  MyUseLayoutEffect
+  MyUseLayoutEffect,
+  MyUseImperativeHandle
 } from '../MyMiniReact/beginWork';
 import { promiseResolve, getGlobalPromise, resetGlobalPromise, originConsoleLog } from '../MyMiniReact/test';
 import { runInBatchUpdate } from '../MyMiniReact/ReactDom';
-import {MyMemo} from '../MyMiniReact/trait';
+import {MyForwardRef, MyMemo} from '../MyMiniReact/trait';
 import { originSetTimeout, runInRecordLog } from '../MyMiniReact/test';
 
 export const useEffect: typeof MyUseEffect = (create, arr) => {
@@ -56,6 +57,15 @@ export const  ReactDOM = {
 
 export const memo: typeof MyMemo = window.useSelfReact ? MyMemo : window.React.memo;
 
+export const forwardRef: typeof MyForwardRef = window.useSelfReact ? MyForwardRef : window.React.forwardRef;
+
+export const useImperativeHandle: typeof MyUseImperativeHandle = (ref, handle, deps) => {
+  return (window.useSelfReact ? MyUseImperativeHandle : window.React.useImperativeHandle)(
+    ref,
+    () => runInRecordLog(() => handle()),
+    deps
+  )
+}
 
 export function sleep(t) {
   let time = Number(new Date());

@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
-import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber } from "./type";
+import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber, MyRef } from "./type";
 import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot } from "./const";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 import { isDepEqual, logFiberIdPath } from "./utils";
@@ -64,8 +64,7 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
         // console.warn('组件已经卸载')
         return;
       }
-      const currentFiber = rootFiber ? findTagFiber(fiber, path, rootFiber) :
-        wipRoot ? findTagFiber(fiber, path, wipRoot) : fiber;
+      const currentFiber = wipRoot ? findTagFiber(fiber, path, wipRoot) : rootFiber ? findTagFiber(fiber, path, rootFiber) : fiber;
 
       const oldValue = newHook.memoizeState;
       
@@ -192,6 +191,23 @@ export function MyUseMemo<T>(cb: () => T, deps: any[]): T {
   }
   fiber.hook.push(newHook)
   return newHook.memoizeState
+}
+
+export function MyUseImperativeHandle<T>(ref: MyRef<T>, handle: () => T, deps?: any[]){
+  return MyUseLayoutEffect(() => {
+    const instance = handle();
+    if (_.isFunction(ref)) {
+      ref(instance)
+      return () => {
+        ref(null)
+      }
+    } else {
+      ref.current = instance;
+      return () => {
+        ref.current = null;
+      }
+    }
+  }, deps)
 }
 
 export function MyUseCallback<T extends Function>(cb: T, deps: any[]): T {

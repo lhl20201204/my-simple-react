@@ -80,7 +80,7 @@ export function sumbitEffect(fiber: MyFiber) {
     //   parentFiber.updateQueue.lastEffect.next = null;
     // }
 
-    if (deleteBol && (fiber.ref)) {
+    if (deleteBol && (fiber.ref) && isHostComponent(fiber)) {
       fiber.flags |= REFEFFECT;
     }
 

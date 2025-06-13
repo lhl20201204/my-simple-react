@@ -57,9 +57,10 @@
     })
 
     if (window.useSelfReact) {
-      window.reactType = Symbol('React.element');
-      window.reactMemoType = Symbol('React.memo')
-      window.reactFragmentType = Symbol('React.Fragment')
+      window.reactType = Symbol('react.element');
+      window.reactMemoType = Symbol('react.memo');
+      window.reactForwardRefType = Symbol('react.forward_ref')
+      window.reactFragmentType = Symbol('react.Fragment')
       // console.log(window)
       window.promiseResolve()
     } else {
@@ -98,7 +99,9 @@
             script.textContent = `
   const innerDom = <div></div>;
   window.reactType = innerDom.$$typeof;
-  const App2 = window.React.memo(() => <div></div>)
+  const App3 = window.React.forwardRef(() => <div></div>);
+  window.reactForwardRefType = App3.$$typeof;
+  const App2 = window.React.memo(App3);
   window.reactMemoType = App2.$$typeof;
   const dom3 = <><div></div><span></span></>;
   window.reactFragmentType = dom3.type;

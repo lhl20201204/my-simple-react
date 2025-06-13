@@ -70,6 +70,8 @@ export const MEMOCOMPONENT = 0b001000;
 
 export const FRAGMENTCOMPONENT = 0b010000;
 
+export const FORWARDREFCOMPONENT =0b100000;
+
 
 // let globalContextFlags: number = NOCONTEXT;
 

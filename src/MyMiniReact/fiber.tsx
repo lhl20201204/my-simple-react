@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { commitRoot, disconnectElementAndFiber } from "./commit";
-import { FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
+import { FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
@@ -25,6 +25,8 @@ export function createFiber(element: MyElement | null, index: number, alternateF
       fiberTag = FUNCTIONCOMPONENT;
      } else if (element?.type?.$$typeof === window.reactMemoType) {
       fiberTag = MEMOCOMPONENT;
+     } else if (element?.type?.$$typeof === window.reactForwardRefType) {
+      fiberTag = FORWARDREFCOMPONENT;
      } else if (element?.type === window.reactFragmentType) {
       fiberTag = FRAGMENTCOMPONENT;
      } else {
@@ -105,6 +107,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     alternateFiber.updateQueue.lastEffect = null;
     alternateFiber.firstEffect = null;
     alternateFiber.lastEffect = null;
+    alternateFiber.nextEffect = null;
 
     alternateFiber.flags = NOEFFECT;
     alternateFiber.alternate = newFiber;
@@ -117,7 +120,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
   }
   if (_.has(element, '_owner')) {
     // originConsoleLog('添加_owner', element, newFiber)
-    // element._owner = newFiber;
+    element._owner = newFiber;
   }
   // if (tag === ROOTCOMPONENT) {
   //   console.error(getCommitEffectListId(newFiber), _.cloneDeep(newFiber))

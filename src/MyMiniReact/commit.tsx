@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FUNCTIONCOMPONENT, getIsFlushEffecting, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_FLAGS, MyReactFiberKey, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getIsFlushEffecting, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_FLAGS, MyReactFiberKey, NO_CONTEXT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { IEffectHook, MyFiber, MyStateNode } from "./type";
 import { isHostComponent, updateDom } from "./dom";
 import { logEffectType, logFiberTree } from "./utils";
@@ -43,7 +43,7 @@ function clearFiber(fiber: MyFiber) {
   fiber.lastEffect = null;
   disconnectElementAndFiber(fiber)
   fiber.element = null;
-  // fiber.memoizedProps = null;
+  fiber.memoizedProps = null;
   fiber.memoizedState = null;
   fiber.pendingProps = null;
   fiber.nextEffect = null;
@@ -52,13 +52,15 @@ function clearFiber(fiber: MyFiber) {
   fiber.ref = null;
   fiber.type = null;
   fiber.tag = null;
-  let f = fiber.updateQueue.firstEffect;
+  let f = fiber.updateQueue?.firstEffect;
   while (f) {
     f.fiber = null;
     f = f.next;
   }
-  fiber.updateQueue.lastEffect = null;
-  fiber.updateQueue.firstEffect = null;
+  if (fiber.updateQueue) {
+    fiber.updateQueue.lastEffect = null;
+    fiber.updateQueue.firstEffect = null;
+  }
   fiber.updateQueue = null;
   if (fiber.stateNode) {
     fiber.stateNode[MyReactFiberKey] = null;
@@ -68,6 +70,7 @@ function clearFiber(fiber: MyFiber) {
   fiber.sibling = null;
   fiber.child = null;
   if (fiber.alternate) {
+    fiber.alternate.alternate = null;
     clearFiber(fiber.alternate);
   }
   fiber.alternate = null;
@@ -91,7 +94,7 @@ function commitDelete(fiber: MyFiber) {
   }
 
   handleLayoutEffectDestroy(fiber);
-  if (fiber.ref) {
+  if (fiber.ref && isHostComponent(fiber)) {
     commitRef(fiber, true)
   }
 
@@ -116,7 +119,7 @@ function findSiblingHostDom(fiber: MyFiber, parentDom: HTMLElement, index = -1) 
   }
 
   let f = fiber;
-  while(f) {
+  while (f) {
     const target = findHostStateNode(f, parentDom);
     if (target && !(f.flags & INSERTBEFORE) && f.index > index) {
       return target.stateNode;
@@ -297,7 +300,7 @@ export function handleEffect(tag: number, rootFiber: MyFiber, jumpReRender = fal
 
   // console.log(tag, _.cloneDeep({ destroyList, createList}))
   const flush = () => {
-    
+
     setCurrentContext(DESTROY_CONTEXT)
     // console.warn('重置队伍', _.cloneDeep({ destroyList, createList: [...createList], rootFiber }))
     while (destroyList.length) {
@@ -375,32 +378,17 @@ export function commitRoot() {
       firstEffect = firstEffect.nextEffect;
       origin.nextEffect = null;
     }
+
+    wipRoot.firstEffect = null;
+    wipRoot.lastEffect = null;
+    wipRoot.nextEffect = null; // TODO 处理每个fiber的nextEffect
+    setRootFiber(wipRoot);
+
+    port1.postMessage('EFFECT_PASSIVE')
+
+    logFiberTree(wipRoot)
+    setWipRoot(null);
   })
-
-
   // console.log(_.cloneDeep({idList, firstEffect, lastEffect: wipRoot.lastEffect}))
-  wipRoot.firstEffect = null;
-  wipRoot.lastEffect = null;
-  wipRoot.nextEffect = null; // TODO 处理每个fiber的nextEffect
-  setRootFiber(wipRoot);
 
-  // console.log('commitRoot---> start')
-
-  // console.warn('useLayoutEffectBefore', getEffectListId(rootFiber));
-  // handleEffect(EFFECT_LAYOUT, rootFiber.updateQueue.firstEffect, rootFiber.updateQueue.lastEffect?.next ?? null);
-  // rootFiber.updateQueue.firstEffect = f;
-  // rootFiber.updateQueue.lastEffect = l;
-  // console.warn('useLayoutEffectAfter', _.cloneDeep({ rootFiber }), getEffectListId(rootFiber));
-  // 异步设计一个问题，如果在更新中，有effect
-  // console.log('同步时候的rootFiber', _.cloneDeep({ wipRoot }), [
-  //   rootFiber ? getEffectListId(rootFiber) : '',
-  //   wipRoot ? getEffectListId(wipRoot) : ''
-  //  ])
-  port1.postMessage('EFFECT_PASSIVE')
-
-  // handleEffect()
-
-
-  logFiberTree(wipRoot)
-  setWipRoot(null);
 }

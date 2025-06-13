@@ -120,6 +120,7 @@ export function logFiberTree(fiber: MyFiber) {
     }
     let name: any = _.isSymbol(f.type) ? f.type.description :
      f.type?.$$typeof === window.reactMemoType ? 'react.memo' :
+     f.type?.$$typeof === window.reactForwardRefType ? 'react.forwardRef': 
      f.type;
     //  console.log(name)
     if (typeof name === 'function') {
