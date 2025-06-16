@@ -40,7 +40,7 @@ export function shallowEqual(obj1: MyProps, obj2: MyProps) {
   }
 
   if (typeof obj1 !== 'object' || obj1 === null ||
-      typeof obj2 !== 'object' || obj2 === null) {
+    typeof obj2 !== 'object' || obj2 === null) {
     return false;
   }
 
@@ -119,9 +119,11 @@ export function logFiberTree(fiber: MyFiber) {
       return null;
     }
     let name: any = _.isSymbol(f.type) ? f.type.description :
-     f.type?.$$typeof === window.reactMemoType ? 'react.memo' :
-     f.type?.$$typeof === window.reactForwardRefType ? 'react.forwardRef': 
-     f.type;
+      f.type?.$$typeof === window.reactMemoType ? 'react.memo' :
+        f.type?.$$typeof === window.reactForwardRefType ? 'react.forwardRef' :
+          f.type?.$$typeof === window.reactProviderType ? 'react.provider' :
+            f.type?.$$typeof === window.reactContextType ? 'react.consumer' :
+              f.type;
     //  console.log(name)
     if (typeof name === 'function') {
       name = (name as Function).name;
@@ -159,8 +161,8 @@ export function getEffectListId(fiber: MyFiber, onlyId = false) {
   let endEffect = fiber.updateQueue?.lastEffect?.next ?? null;
   const ret = []
   while (f && f !== endEffect) {
-    ret.push(onlyId ? f.id :[f.id,
-   f.tag & EFFECT_LAYOUT ? 'layout' : 'passive',
+    ret.push(onlyId ? f.id : [f.id,
+    f.tag & EFFECT_LAYOUT ? 'layout' : 'passive',
     f.tag & EFFECT_HOOK_HAS_EFFECT ? 'effect' : ''
     ].join('-'))
     f = f.next;

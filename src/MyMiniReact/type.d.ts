@@ -55,17 +55,27 @@ export type MyTask = {
   priority: number;
 }
 
-export type MyContext = {
-  Provider: MyFiber | null;
-  Consumer: MyFiber | null;
-  _currentValue: any;
+export type MyContext<T> = {
+  $$typeof: Symbol;
+  Provider: {
+    $$typeof: Symbol;
+    _context: MyContext<T> 
+  }
+  Consumer: {
+    $$typeof: Symbol;
+    _context: MyContext<T>
+  }
+  _currentValue: T;
+}
+
+export type MyDependenciesContext<T> = {
+  context: MyContext<T>
+  memoizedValue: T;
+  next: MyDependenciesContext<unknown> | null;
 }
 
 export type MyDependencies = null | {
-  firstContext: {
-    context: MyContext | null,
-    next: MyDependencies
-  };
+  firstContext: MyDependenciesContext<unknown>;
 }
 
 export type IFLAGS = number;
@@ -116,7 +126,7 @@ export type MyFiber = {
   id: number;
   alternate: MyFiber | null;
   child: MyFiber | null;
-  dependencies: MyDependencies;
+  dependencies: MyDependencies | null;
   elementType: MyElementType;
   firstEffect: MyFiber | null;
   flags: IFLAGS;

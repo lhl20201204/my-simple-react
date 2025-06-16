@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
-import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyFiber, MyRef } from "./type";
-import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot } from "./const";
+import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyContext, MyDependenciesContext, MyFiber, MyRef } from "./type";
+import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot, PROVIDERCOMPONENT } from "./const";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 import { isDepEqual, logFiberIdPath } from "./utils";
 
@@ -226,4 +226,57 @@ export function MyUseCallback<T extends Function>(cb: T, deps: any[]): T {
   }
   fiber.hook.push(newHook)
   return newHook.memoizeState
+}
+
+export function MyUseContext<T>(context: MyContext<T>): T {
+  const fiber: MyFiber = currentlyFiber;
+  if (fiber.alternate) {
+    fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
+    let f = fiber.dependencies?.firstContext;
+    while(f && f.context !== context) {
+      f = f.next;
+    }
+
+    if (f.context !== context) {
+      return undefined;
+    }
+    return f.memoizedValue as T;
+  }
+
+  let memoizedValue = undefined;
+  let f = fiber;
+  while(f) {
+    if (f.tag === PROVIDERCOMPONENT && f.elementType._context === context ) {
+      memoizedValue = f.memoizedProps.value;
+      break;
+    }
+    f = f.return;
+  }
+
+  const newContext: MyDependenciesContext<T> = {
+         context,
+         memoizedValue,
+         next: null
+  };
+
+  if (!fiber.dependencies) {
+     fiber.dependencies = {
+       firstContext: newContext
+     }
+  } else {
+    let f = fiber.dependencies.firstContext;
+    while(f) {
+
+      if (!f.next) {
+        break;
+      }
+      f = f.next;
+    }
+    f.next = newContext
+  }
+  // 创建一个空的context；
+  const newHook = {
+  }
+  fiber.hook.push(newHook)
+  return newContext.memoizedValue;
 }

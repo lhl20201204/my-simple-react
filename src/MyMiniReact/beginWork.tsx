@@ -1,7 +1,7 @@
 import _ from "lodash";
-import { DEFAULTLANE, DELETE, deletions, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, REFEFFECT, setBatchUpdating, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
+import { CONSUMNERCOMPONENT, DEFAULTLANE, DELETE, deletions, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, setBatchUpdating, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
 import { createFiber } from "./fiber";
-import { MyElement, MyElementType, MyElmemetKey, MyFiber } from "./type";
+import { MyContext, MyElement, MyElementType, MyElmemetKey, MyFiber } from "./type";
 import { getEffectListId, getPropsByElement, isPropsEqual, isStringOrNumber, logEffectType, logFiberIdPath } from "./utils";
 import { sumbitEffect } from "./completeWork";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
@@ -245,7 +245,7 @@ function cloneChildFiber(parentFiber: MyFiber) {
   let newFiber: MyFiber | null = null;
   let retFiber: MyFiber | null = null;
   let prevSibling: MyFiber | null = null;
-  while(oldFiberSibling) {
+  while (oldFiberSibling) {
     if (oldFiberSibling.lanes === NOLANE ||
       oldFiberSibling.flags === NOEFFECT
     ) {
@@ -326,6 +326,30 @@ export function handleFunctionComponent(fiber: MyFiber, isRef: boolean) {
 
 }
 
+export function notifyChildFiber<T>(fiber: MyFiber, context: MyContext<T>,
+  newValue: T
+) {
+  let f = fiber.child;
+  while (f) {
+    if (f.tag === CONSUMNERCOMPONENT) {
+      setFiberWithFlags(f, UPDATE)
+    } else {
+      let c = f.dependencies?.firstContext
+      // console.log({ c })
+      while (c) {
+        if (c.context === context) {
+          c.memoizedValue = newValue;
+          setFiberWithFlags(f, UPDATE)
+          break;
+        }
+        c = c.next;
+      }
+    }
+    notifyChildFiber(f, context, newValue);
+    f = f.sibling;
+  }
+}
+
 // let debugggerIndex  =0;
 export function beginWork(fiber: MyFiber): MyFiber | null {
   // console.log('enter---->beginWork', fiber)
@@ -338,7 +362,7 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
 
   if (
     fiber.lanes === NOLANE &&
-    (!fiber.alternate || isPropsEqual(fiber.pendingProps, fiber.alternate.memoizedProps, fiber))
+    (!fiber.alternate || isPropsEqual(fiber.pendingProps, fiber.memoizedProps, fiber))
   ) {
     if (fiber.childLanes === NOLANE) {
       // console.log('所有子树跳过beginWork', _.cloneDeep(fiber))
@@ -376,6 +400,48 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     return next;
   }
 
+  if (fiber.tag === PROVIDERCOMPONENT) {
+    if (fiber.alternate && fiber.pendingProps.value !== fiber.memoizedProps.value) {
+      // console.warn(_.cloneDeep({ fiber}))
+      notifyChildFiber(fiber, fiber.elementType._context, fiber.pendingProps.value);
+    }
+    // resetLaneProps(fiber)
+  }
+
+  if (fiber.tag === CONSUMNERCOMPONENT) {
+    // console.log(fiber, fiber.lanes, fiber.childLanes)
+    if (fiber.lanes === NOLANE) {
+      // console.log(fiber.id, '本身不用更新', _.cloneDeep(fiber));
+      if (fiber.childLanes !== NOLANE) {
+        return cloneChildFiber(fiber)
+      }
+      // console.log('enter')
+      return fiber.child;
+    }
+
+    let memoizedValue = undefined;
+    let f = fiber;
+    while (f) {
+      if (f.tag === PROVIDERCOMPONENT && f.elementType._context ===
+        fiber.elementType._context
+      ) {
+        memoizedValue = f.memoizedProps.value;
+        break;
+      }
+      f = f.return;
+    }
+    const next = reconcileChildren(fiber,
+      [
+        (fiber.pendingProps.children as Function)(
+          memoizedValue
+        )
+      ]
+    )
+    resetLaneProps(fiber)
+    // console.log(fiber.lanes)
+    return next;
+  }
+
   if (fiber.tag === FUNCTIONCOMPONENT || fiber.tag === FORWARDREFCOMPONENT) {
     return handleFunctionComponent(fiber, fiber.tag === FORWARDREFCOMPONENT);
   }
@@ -390,6 +456,11 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
       fiber.pendingProps.children :
       [fiber.pendingProps.children]
   );
+
+  // if (fiber.tag === PROVIDERCOMPONENT) {
+  //   console.warn(_.cloneDeep(fiber));
+  // }
+
   resetLaneProps(fiber)
   return next;
 }

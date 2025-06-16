@@ -2,12 +2,14 @@ import { MyUseEffect,  MyUseRef, MyUseState ,
    MyUseCallback,
   MyUseMemo,
   MyUseLayoutEffect,
-  MyUseImperativeHandle
+  MyUseImperativeHandle,
+  MyUseContext
 } from '../MyMiniReact/beginWork';
 import { promiseResolve, getGlobalPromise, resetGlobalPromise, originConsoleLog } from '../MyMiniReact/test';
 import { runInBatchUpdate } from '../MyMiniReact/ReactDom';
 import {MyForwardRef, MyMemo} from '../MyMiniReact/trait';
 import { originSetTimeout, runInRecordLog } from '../MyMiniReact/test';
+import { MyCreateContext } from '../MyMiniReact/context';
 
 export const useEffect: typeof MyUseEffect = (create, arr) => {
   return (window.useSelfReact ? MyUseEffect : window.React.useEffect)(() => {
@@ -66,6 +68,12 @@ export const useImperativeHandle: typeof MyUseImperativeHandle = (ref, handle, d
     deps
   )
 }
+
+export const createContext: typeof MyCreateContext = window.useSelfReact ? MyCreateContext :  window.React.createContext;
+
+export const useContext: typeof MyUseContext = window.useSelfReact ?
+ MyUseContext 
+ : window.React.useContext;
 
 export function sleep(t) {
   let time = Number(new Date());

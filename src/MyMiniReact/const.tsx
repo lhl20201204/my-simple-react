@@ -72,6 +72,10 @@ export const FRAGMENTCOMPONENT = 0b010000;
 
 export const FORWARDREFCOMPONENT =0b100000;
 
+export const PROVIDERCOMPONENT = 0b1000000;
+
+export const CONSUMNERCOMPONENT = 0b10000000;
+
 
 // let globalContextFlags: number = NOCONTEXT;
 

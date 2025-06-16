@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { commitRoot, disconnectElementAndFiber } from "./commit";
-import { FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
+import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, PROVIDERCOMPONENT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
 import { MyElement, MyFiber } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
@@ -19,6 +19,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
   let fiberTag = tag;
   if (_.isNil(fiberTag)) {
     // console.log('fragment', element, window.reactFragmentType, element?.type === window.reactFragmentType)
+    // console.warn('---->', element)
     if (isStringOrNumber(element)) {
       fiberTag = TEXTCOMPONENT;
     } else if (typeof element?.type === 'function') {
@@ -29,6 +30,10 @@ export function createFiber(element: MyElement | null, index: number, alternateF
       fiberTag = FORWARDREFCOMPONENT;
      } else if (element?.type === window.reactFragmentType) {
       fiberTag = FRAGMENTCOMPONENT;
+     } else if (element?.type?.$$typeof === window.reactProviderType) {
+      fiberTag = PROVIDERCOMPONENT;
+     } else if (element?.type?.$$typeof === window.reactContextType) {
+      fiberTag = CONSUMNERCOMPONENT;
      } else {
       fiberTag = HOSTCOMPONENT;
      }
@@ -77,6 +82,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
     newFiber.pendingProps = getPropsByElement(element),
+    newFiber.memoizedProps = alternateFiber.memoizedProps;
     newFiber.ref = element?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
@@ -100,9 +106,12 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     newFiber.firstEffect = alternateFiber.firstEffect;
     newFiber.lastEffect = alternateFiber.lastEffect;
 
+    newFiber.dependencies = alternateFiber.dependencies;
+
     // console.log(_.cloneDeep({ newFiber }))
 
 
+    alternateFiber.dependencies = null;
     alternateFiber.updateQueue.firstEffect = null;
     alternateFiber.updateQueue.lastEffect = null;
     alternateFiber.firstEffect = null;

@@ -61,6 +61,8 @@
       window.reactMemoType = Symbol('react.memo');
       window.reactForwardRefType = Symbol('react.forward_ref')
       window.reactFragmentType = Symbol('react.Fragment')
+      window.reactProviderType = Symbol('react.provider')
+      window.reactContextType = Symbol('react.context')
       // console.log(window)
       window.promiseResolve()
     } else {
@@ -69,7 +71,7 @@
           type: 'fetch',
           script: () => {
             const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/18.0.0/umd/react.development.js"
             return script
           },
         },
@@ -77,7 +79,7 @@
           type: 'fetch',
           script: () => {
             const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.0.0/umd/react-dom.development.js"
             return script
           },
         },
@@ -97,6 +99,9 @@
             script.setAttribute('data-type', 'module');
             script.setAttribute('data-presets', 'typescript,react');
             script.textContent = `
+  const context = window.React.createContext({ a: 1 });
+  window.reactContextType = context.$$typeof;
+  window.reactProviderType = context.Provider.$$typeof;
   const innerDom = <div></div>;
   window.reactType = innerDom.$$typeof;
   const App3 = window.React.forwardRef(() => <div></div>);
@@ -105,7 +110,7 @@
   window.reactMemoType = App2.$$typeof;
   const dom3 = <><div></div><span></span></>;
   window.reactFragmentType = dom3.type;
-  console.log(window.reactType, App2, <App2 />, dom3,
+  console.log(window.reactType,window.reactContextType, window.reactProviderType,  App2, <App2 />, dom3,
   <React.Fragment><div></div><div></div></React.Fragment>,
   );
   window.promiseResolve()

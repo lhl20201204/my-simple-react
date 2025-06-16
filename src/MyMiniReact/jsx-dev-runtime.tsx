@@ -13,15 +13,17 @@ declare global {
     reactMemoType: Symbol;
     reactFragmentType: Symbol;
     reactForwardRefType: Symbol;
+    reactContextType: Symbol;
+    reactProviderType: Symbol;
   }
 }
 
 export const globalHocMap = new WeakMap<MyElementType, MyElementType>();
-
+let pid = 0;
 function transformProps<T extends Record<string, unknown>>(props: T): T {
-  const ret = {};
+  const ret = { _propsId: pid ++ } as any;
   _.forEach(props, (v, k) => {
-    if (k.startsWith('on') && _.isFunction(v)) {
+    if ((k.startsWith('on') || k === 'children') && _.isFunction(v)) {
       ret[k] = ((...args) => {
         return runInRecordLog(() => (v)(...args));
       }) as typeof v

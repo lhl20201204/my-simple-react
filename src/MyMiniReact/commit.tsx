@@ -42,6 +42,7 @@ function clearFiber(fiber: MyFiber) {
   fiber.lanes = null;
   fiber.lastEffect = null;
   disconnectElementAndFiber(fiber)
+  fiber.dependencies = null;
   fiber.element = null;
   fiber.memoizedProps = null;
   fiber.memoizedState = null;

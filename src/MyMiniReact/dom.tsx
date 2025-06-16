@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { MyFiber, MyStateNode } from "./type";
-import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, TEXTCOMPONENT } from "./const";
+import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, PROVIDERCOMPONENT, TEXTCOMPONENT } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
 
 export function isTextComponent(fiber: MyFiber) {
@@ -10,6 +10,7 @@ export function isTextComponent(fiber: MyFiber) {
 export function isHostComponent(fiber: MyFiber) {
   return fiber.tag === HOSTCOMPONENT || isTextComponent(fiber)
   || fiber.tag === FRAGMENTCOMPONENT
+  || fiber.tag === PROVIDERCOMPONENT
 }
 
 export const findChildStateNode = (fiber: MyFiber | null) => {
@@ -165,8 +166,12 @@ export function createDom(fiber: MyFiber) {
   }
   if (isHostComponent(fiber)) {
     const dom = document.createElement(
-      fiber.tag === FRAGMENTCOMPONENT ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
+    [
+      FRAGMENTCOMPONENT,
+      PROVIDERCOMPONENT
+    ].includes(fiber.tag)  ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
     fiber.stateNode = dom;
+    // console.log('创建dom', dom);
     updateDom(fiber);
     let f = fiber.child;
     const ret = []
