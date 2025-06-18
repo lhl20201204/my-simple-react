@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { DEFAULTLANE, EFFECT_PASSIVE, getBatchUpdating, getIsFlushEffecting, getIsRendering, NOLANE, ROOTCOMPONENT, rootFiber, setBatchUpdating, setFiberRoot, setIsFlushEffecting, setIsRendering, setWipRoot, setWorkInProgress, wipRoot } from "./const";
 import { createFiber, syncWorkLoop, workLoop } from "./fiber";
-import { MyElement, MyFiber, MyStateNode, MyTask } from "./type";
+import { MyFiber, MyReactElement, MyStateNode, MyTask } from "./type";
 import { handleEffect } from "./commit";
 
 
@@ -83,7 +83,7 @@ export function runInBatchUpdate<T>(cb: () => T, jumpReRender = false): T {
 
 export function createRoot(rootNode: MyStateNode) {
   return {
-    render: (element: MyElement) => {
+    render: (element: MyReactElement) => {
       // console.log('element', { element})
       const rootFiber2 = createFiber({
         elementId: 0,

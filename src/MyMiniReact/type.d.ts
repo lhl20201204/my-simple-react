@@ -1,6 +1,8 @@
 import { DELETE, PLACEMENT, UPDATE } from "./const";
 
-export type MyProps = Record<string, any>;
+export type MyProps = {
+  [key: string]: any;
+}
 export type MyDomNode = HTMLElement;
 
 export type MyStateNode = null | MyDomNode | Text;
@@ -13,41 +15,53 @@ export type MyRef<T> = {
 
 export type MyFiberRef = MyRef<any> | (((x: any) => void))
 
-export type MyFunctionComponent = (props: MyProps, ref?: MyRef) => MyElement;
+export type MyFunctionComponent = (props: MyProps, ref?: MyRef) => MyReactNode;
 
 export type MyForwardRefComponent<T extends MyFunctionComponent> = {
   $$typeof: Symbol;
-  render: T
+  render: T;
+  (props: MyFunctionComponentProps<T> & { ref?: MyRef }): MyReactNode;
 }
 
-export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyElement ? f : 
+export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyReactNode ? f : 
 T extends MyForwardRefComponent<infer Y> ? MyFunctionComponentProps<Y> : never;
 
 export type MyMemoComponent<T extends MyFunctionComponent | MyForwardRefComponent> = {
   $$typeof: Symbol;
   compare: null | ((x: MyFunctionComponentProps<T>, y: MyFunctionComponentProps<T>) => boolean),
   type: T
+  (props: MyFunctionComponentProps<T>): MyReactNode;
 }
 
-export type MyClassComponent = new (props: MyProps, context: any) => MyElement;
+export type MyClassComponent = new (props: MyProps, context: any) => MyReactNode;
 
 export type MyElementType = 'root' | keyof HTMLElementTagNameMap
  | MyFunctionComponent | MyClassComponent | MyMemoComponent
 | Symbol;
 
 export type MyElmemetKey = string | number | null | undefined
-export type MyElement = {
+export type MyElement<T extends MyElementType, P extends MyProps, K extends MyElmemetKey> = {
   elementId: number;
   $$typeof: Symbol
-  type: MyElementType;
-  props: MyProps;
-  key: MyElmemetKey;
-  ref: null | MyRef;
+  type: T;
+  props: P;
+  key: K;
+  ref: null | P['ref'];
   _owner: null | MyFiber;
   _store: { validated: false }
 };
 
-export type MyJSX = (props: MyProps, key: MyElmemetKey) => MyElement;
+export type MyReactElement = MyElement<MyElementType, MyProps, MyElmemetKey>;
+
+export type MySingleReactNode = MyReactElement | string | number | boolean | null | undefined;
+
+export type MyReactNode = MySingleReactNode | MySingleReactNode[];
+
+export type MyJSX = <T extends MyElementType, P extends MyProps, K extends MyElmemetKey>(
+  type: T,
+  props: P,
+  key: K
+) => MyElement<T, P, K>;
 
 export type MyTask = {
   callback: () => void;
@@ -60,10 +74,12 @@ export type MyContext<T> = {
   Provider: {
     $$typeof: Symbol;
     _context: MyContext<T> 
+    (props: { children?: MyReactNode, value: T }): MyReactNode;
   }
   Consumer: {
     $$typeof: Symbol;
-    _context: MyContext<T>
+    _context: MyContext<T>;
+    (props: { children: (value: T) => MyReactNode }): MyReactNode;
   }
   _currentValue: T;
 }
@@ -137,8 +153,8 @@ export type MyFiber = {
   updateQueue: {
     firstEffect: null | IEffectHook,
     lastEffect: null | IEffectHook,
-  }
-  element: MyElement | null;
+  };
+  element: MySingleReactNode | null;
   lastEffect: MyFiber | null;
   hook: IHook[];
   memoizedProps: MyProps;

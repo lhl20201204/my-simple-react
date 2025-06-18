@@ -15,5 +15,5 @@ export function MyCreateContext<T>(obj: T): MyContext<T> {
   }
   context.Provider._context = context;
   context.Consumer._context = context;
-  return context;
+  return context as MyContext<T>;
 }

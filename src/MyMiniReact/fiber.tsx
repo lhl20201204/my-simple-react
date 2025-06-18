@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { commitRoot, disconnectElementAndFiber } from "./commit";
 import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, PROVIDERCOMPONENT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
-import { MyElement, MyFiber } from "./type";
+import { MyFiber, MyReactElement, MySingleReactNode } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
@@ -9,7 +9,7 @@ import { originConsoleLog, trackFiber } from "./test";
 
 
 let id = 0;
-export function createFiber(element: MyElement | null, index: number, alternateFiber: MyFiber | null,
+export function createFiber(element: MySingleReactNode, index: number, alternateFiber: MyFiber | null,
   tag?: number) {
   // console.error(element);
   // if (tag === ROOTCOMPONENT) {
@@ -43,7 +43,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
 
   const newFiber: MyFiber = alternateFiber?.alternate ?? {
     id: id++,
-    key: element?.key,
+    key: (element as MyReactElement)?.key,
     pendingProps: getPropsByElement(element),
     type: (isStringOrNumber(element) ? 'text' : element?.type),
     flags: NOEFFECT,
@@ -54,7 +54,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     childLanes: NOLANE,
     child: null,
     dependencies: null,
-    elementType: element?.type,
+    elementType: (element as MyReactElement)?.type,
     firstEffect: null,
     hook: [],
     updateQueue: {
@@ -67,7 +67,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     memoizedProps: {},
     memoizedState: null,
     nextEffect: null,
-    ref: element?.ref,
+    ref: (element as MyReactElement)?.ref,
     return: null,
     sibling: null,
   }
@@ -83,7 +83,7 @@ export function createFiber(element: MyElement | null, index: number, alternateF
     newFiber.alternate = alternateFiber;
     newFiber.pendingProps = getPropsByElement(element),
     newFiber.memoizedProps = alternateFiber.memoizedProps;
-    newFiber.ref = element?.ref;
+    newFiber.ref = (element as MyReactElement)?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;

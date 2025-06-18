@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { CONSUMNERCOMPONENT, DEFAULTLANE, DELETE, deletions, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, setBatchUpdating, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
 import { createFiber } from "./fiber";
-import { MyContext, MyElement, MyElementType, MyElmemetKey, MyFiber } from "./type";
+import { MyContext, MyFiber, MyReactNode, MySingleReactNode } from "./type";
 import { getEffectListId, getPropsByElement, isPropsEqual, isStringOrNumber, logEffectType, logFiberIdPath } from "./utils";
 import { sumbitEffect } from "./completeWork";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
@@ -26,17 +26,17 @@ function getFlags(fiber: MyFiber) {
   return (parent && (parent.flags & PLACEMENT)) ? NOEFFECT : PLACEMENT;
 }
 
-function canDiff(fiber: MyFiber, child?: MyElement) {
-  return (fiber.key === child?.key && fiber.type === child?.type) || (isTextComponent(fiber) && isStringOrNumber(child))
+function canDiff(fiber: MyFiber, child?: MySingleReactNode) {
+  return (_.isObject(child) && fiber.key === child?.key && fiber.type === child?.type) || (isTextComponent(fiber) && isStringOrNumber(child))
 }
 
-function findFiberByKeyAndType(list: MyFiber[], child?: MyElement) {
+function findFiberByKeyAndType(list: MyFiber[], child?: MySingleReactNode) {
   // console.log('findFiberByKeyAndType',_.cloneDeep({ list, child}))
   const index = list.findIndex(c => canDiff(c, child));
   return index > -1 ? list.splice(index, 1)[0] : null;
 }
 
-function reconcileChildren(fiber: MyFiber, list: MyElement[]) {
+function reconcileChildren(fiber: MyFiber, list: MyReactNode[]) {
   // console.log('reconcileChildren', _.cloneDeep({ fiber, list }))
   let children = _.flatten(list)
   let index = 0;

@@ -120,6 +120,8 @@ export async function test3DiffDFS(setState: any, lastArr: string[], count: numb
     setTimeout(() => {
       test3DiffDFS(setState, expectArr, _.isNumber(count) ? count - 1 : count)
     }, 1000)
+  } else {
+    
   }
 }
 
@@ -129,7 +131,7 @@ export function test3Diff(setState: any, lastArr: string[], count: number | stri
   test3DiffDFS(setState, lastArr, count)
 }
 
-export async function testMemoryLeak(setState: any, lastArr: string[], count: number | string[][]) {
+export async function testMemoryLeak(setState: any, lastArr: string[], count: number | string[][], list = []) {
   const base = Math.floor(Math.random() * 20);
   const expectArr = _.isNumber(count) ? new Array(Math.floor(Math.random() * 20) + 1).fill(0).map((c, i) => `${base + i + 1}`).sort(() => Math.random() - 0.5) : count.shift();
   originConsoleLog({ expectArr, count: _.isNumber(count) ? count : [...count] })
@@ -201,8 +203,10 @@ export async function testMemoryLeak(setState: any, lastArr: string[], count: nu
 
   if (_.isNumber(count) ? count > 1 : count.length > 0) {
     setTimeout(() => {
-      testMemoryLeak(setState, expectArr, _.isNumber(count) ? count - 1 : count)
+      testMemoryLeak(setState, expectArr, _.isNumber(count) ? count - 1 : count, [...list, expectArr])
     }, 1000)
+  } else {
+    console.error([...list, expectArr])
   }
 }
 

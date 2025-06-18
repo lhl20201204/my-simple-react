@@ -1,4 +1,4 @@
-import WindomDom from "./test8";
+import WindomDom from "./test6";
 import { useEffect } from "./utils";
 
 function A() {

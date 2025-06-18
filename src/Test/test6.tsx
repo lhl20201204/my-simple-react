@@ -4,7 +4,9 @@ import { useState } from "./utils";
   const [isFancy, setIsFancy] = useState(false);
   console.log('render-isFancy', isFancy)
   return (
-    <div>
+    <div style={{
+      padding: 40
+   }}>
       {isFancy ? (
         <Counter isFancy={true} /> 
       ) : (

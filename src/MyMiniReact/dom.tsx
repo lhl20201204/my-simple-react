@@ -140,7 +140,10 @@ export function updateDom(fiber: MyFiber) {
             if (key === 'style') {
               _.forEach(newProps[key], (v, k) => {
                 // console.log('添加', dom, k, v);
-                (dom as HTMLElement).style[k] = v;
+                (dom as HTMLElement).style[k] =
+                ['padding', 'margin', 'width', 'height'].includes(k) && _.isNumber(v)
+                ? `${v}px`
+                : v;
               })
             } else {
               dom[key] = newProps[key];

@@ -1,10 +1,14 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "./utils";
+import { createContext, useContext, useMemo, useState } from "./utils";
 
 const Context = createContext('');
 
+const Context2 = createContext('static')
+
 function Grand() {
   const ccc = useContext(Context)
-  console.log('Grand', [ccc])
+  const ccc2 = useContext(Context2);
+  const ccc3 = useContext(Context)
+  console.log('Grand', [ccc, ccc2, ccc3])
   return <div ref={(x) => {
     console.log('ref', [x])
   }}>
@@ -15,14 +19,14 @@ function Grand() {
 function Child({ children, debuggerKey }) {
   const [id, setId] = useState(0);
 
-  const consumerCallback = useMemo(
+  const consumer = useMemo(
     () => <Context.Consumer>
       {
         value => {
           console.log('consumer')
           return <>
-          <span>
-            consumer =={value}</span>
+            <span>
+              consumer =={value}</span>
             <div>
               fdsjfosdf
             </div>
@@ -30,10 +34,9 @@ function Child({ children, debuggerKey }) {
         }}
     </Context.Consumer>, [])
 
-  const consumer = consumerCallback;
   console.log('child', consumer)
   return <div >
-    <div id={debuggerKey} style={{ border: '1px solid red', padding: '8px'}} onClick={() => {
+    <div id={debuggerKey} style={{ border: '1px solid red', padding: '8px' }} onClick={() => {
       console.log('middle', debuggerKey)
       setId(id + 1)
     }}>middle</div>
@@ -63,23 +66,28 @@ function App() {
   }, [])
 
   const fn = ([x, fn], i) => {
-  const t = [dom, dom2][i];
-  return <div key={i} style={{ border: '1px solid blue', padding: '8px'}}>
-    <Context.Provider value={x}>
-    {t}
-    <div onClick={() => {
-      console.log('点击----')
-      fn(f => f + 1)
-    }}>group{i}</div>
-  </Context.Provider>
-    </div>}
+    const t = [dom, dom2][i];
+    return <div key={i} style={{ border: '1px solid blue', padding: '8px' }}>
+      <Context2.Provider value={'fdsfsdf'}>
+        <Context.Provider value={x}>
+          <Context.Provider value={x + '_inner'}>
+            {t}
+            <div onClick={() => {
+              console.log('点击----')
+              fn(f => f + 1)
+            }}>group{i}</div>
+          </Context.Provider>
+        </Context.Provider>
+      </Context2.Provider>
+    </div>
+  }
 
-  const ret =  <>
-  {
-    [arr, arr2].map(fn)
-}</>;
+  const ret = <>
+    {
+      [arr, arr2].map(fn)
+    }</>;
 
-    console.log('Context.Provider ', Context.Provider, ret, [dom, dom1])
+  console.log('Context.Provider ', Context.Provider, ret, [dom, dom1])
   return ret;
 }
 

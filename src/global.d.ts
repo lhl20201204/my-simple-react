@@ -1,9 +1,9 @@
 declare namespace JSX {
-  interface IntrinsicElements {
-    [elemName: string]: {
-      [key: string]: any;
-    };
+  interface CSSProperties extends CustomCSSProperties {
+    
   }
+  type IntrinsicElements = Generate<CommonHTMLTags>;
+
   type Element = MyElement;
   interface IntrinsicAttributes {
     key?: string | number;
@@ -11,4 +11,8 @@ declare namespace JSX {
   interface ElementAttributesProperty {
     props: {}; // 告诉TSX所有组件的props都可以有key
   }
+  interface ElementChildrenAttribute {
+    children: {};
+  }
 }
+
