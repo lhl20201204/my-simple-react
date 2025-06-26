@@ -7,9 +7,10 @@ import { MyUseEffect,  MyUseRef, MyUseState ,
 } from '../MyMiniReact/beginWork';
 import { promiseResolve, getGlobalPromise, resetGlobalPromise, originConsoleLog } from '../MyMiniReact/test';
 import { runInBatchUpdate } from '../MyMiniReact/ReactDom';
-import {MyForwardRef, MyMemo} from '../MyMiniReact/trait';
+import {MyForwardRef, MyLazy, MyMemo, MySuspense} from '../MyMiniReact/trait';
 import { originSetTimeout, runInRecordLog } from '../MyMiniReact/test';
 import { MyCreateContext } from '../MyMiniReact/context';
+import _ from 'lodash';
 
 export const useEffect: typeof MyUseEffect = (create, arr) => {
   return (window.useSelfReact ? MyUseEffect : window.React.useEffect)(() => {
@@ -57,9 +58,21 @@ export const  ReactDOM = {
   }: window.ReactDOM.unstable_batchedUpdates
 }
 
-export const memo: typeof MyMemo = window.useSelfReact ? MyMemo : window.React.memo;
+export const memo: typeof MyMemo = (Comp) => (window.useSelfReact ? MyMemo : window.React.memo)(
+  _.isFunction(Comp) ? (props) => {
+      return runInRecordLog(() => {
+          return Comp(props)
+        })
+    } : Comp
+)
 
-export const forwardRef: typeof MyForwardRef = window.useSelfReact ? MyForwardRef : window.React.forwardRef;
+export const forwardRef: typeof MyForwardRef =(Comp) => (window.useSelfReact ? MyForwardRef : window.React.forwardRef)(
+  (props, ref) => {
+      return runInRecordLog(() => {
+          return Comp(props, ref)
+        })
+    }
+);
 
 export const useImperativeHandle: typeof MyUseImperativeHandle = (ref, handle, deps) => {
   return (window.useSelfReact ? MyUseImperativeHandle : window.React.useImperativeHandle)(
@@ -74,6 +87,54 @@ export const createContext: typeof MyCreateContext = window.useSelfReact ? MyCre
 export const useContext: typeof MyUseContext = window.useSelfReact ?
  MyUseContext 
  : window.React.useContext;
+
+const weakMap = new WeakMap();
+
+export const ReactUse = (promise: Promise<any>) => {
+  if (!weakMap.has(promise)) {
+    const record = {
+      status: 'pending',
+      value: null,
+      error: null,
+    }
+    weakMap.set(promise, record);
+    promise.then(value => {
+      record.status = 'fulfilled';
+      record.value = value;
+    }, error => {
+      record.status = 'rejected';
+      record.error = error;
+    });
+  }
+  const record2 = weakMap.get(promise);
+  if (record2.status === 'pending') {
+    throw promise;
+  }
+  if (record2.status === 'fulfilled') {
+    return record2.value;
+  }
+  if (record2.status === 'rejected') {
+    throw record2.error;
+  }
+}
+
+export const use = ReactUse;
+
+export const Suspense: typeof MySuspense = window.useSelfReact ? MySuspense :  window.React.Suspense;
+
+export const lazy: typeof MyLazy =  (fn) => {
+  return (window.useSelfReact ? MyLazy : window.React.lazy)((async () => {
+    const res = await fn();
+    console.log('resolve')
+    return {
+      default: (...args) => {
+        return runInRecordLog(() => {
+          return res.default(...args)
+        })
+      }
+    };
+  }) as typeof fn);
+};
 
 export function sleep(t) {
   let time = Number(new Date());

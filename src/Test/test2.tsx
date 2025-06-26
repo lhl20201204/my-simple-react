@@ -53,7 +53,7 @@ function App() {
   const ref = useRef(null)
   console.log('App-render')
   useEffect(() => {
-    console.log([...set]);
+    console.log('set', [...set]);
     console.log('useEffect-App-create', bol);
     return () => {
       console.log('useEffect-App-destroy', bol);

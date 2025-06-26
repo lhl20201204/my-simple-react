@@ -1,23 +1,23 @@
 import _ from "lodash";
-import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
+import { addHookIndex, currentlyFiber, handleFunctionComponent, setFiberWithFlags } from "./beginWork";
 import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyContext, MyDependenciesContext, MyFiber, MyRef } from "./type";
 import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot, PROVIDERCOMPONENT } from "./const";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 import { isDepEqual, logFiberIdPath } from "./utils";
 
-function findFiberPath(fiber: MyFiber) {
+export function findFiberPath(fiber: MyFiber) {
   const ret = [];
-  while(fiber) {
+  while (fiber) {
     ret.push(fiber);
     fiber = fiber.return;
   }
   return ret;
 }
 
-function findTagFiber(fiber: MyFiber, path: MyFiber[], rootFiber: MyFiber) {
+export function findTagFiber(fiber: MyFiber, path: MyFiber[], rootFiber: MyFiber) {
   // originConsoleLog([...path])
   let p = rootFiber;
-  while(path.length && p === path[path.length - 1]) {
+  while (path.length && p === path[path.length - 1]) {
     // p = p.child;
     let c = p.child;
     let f = p;
@@ -42,11 +42,13 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
   if (fiber.alternate) {
     // console.log(_.cloneDeep({ fiber }))
     const hook = fiber.hook[addHookIndex()] as IStateHook<T>;
+    // console.error('useState', _.cloneDeep(hook))
     while (hook.updateList.length) {
       const h = hook.updateList.shift();
+      // console.error('useState-shift', _.cloneDeep(h))
       hook.memoizeState = _.isFunction(h) ? h(hook.memoizeState) : h;
     }
-    //  console.log('拿到的', hook.memoizeState)
+    //  console.log('拿到的', hook.memoizeState, _.cloneDeep(hook))
     //  hook.fiber = fiber;
     return [hook.memoizeState, hook.dispatchAction] as [T, (x: IStateParams<T>) => void];
   }
@@ -67,12 +69,24 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
       const currentFiber = wipRoot ? findTagFiber(fiber, path, wipRoot) : rootFiber ? findTagFiber(fiber, path, rootFiber) : fiber;
 
       const oldValue = newHook.memoizeState;
-      
+
       // console.error('setState', _.cloneDeep({ currentFiber }), logFiberIdPath(currentFiber))
       if (!(currentFiber.flags & UPDATE) && !currentlyFiber && getCurrentContext() !== DESTROY_CONTEXT) {
+        // console.error('直接执行setState', x, _.cloneDeep(updateList))
         newHook.memoizeState = _.isFunction(x) ? x(newHook.memoizeState) : x;
       } else {
-        updateList.push(x);
+        // console.error('push到updateList', x, _.cloneDeep(updateList))
+        // console.log('push到updateList', x, oldValue, _.cloneDeep(updateList))
+        if (x !== oldValue) {
+          updateList.push(x);
+        } else if (currentlyFiber && (
+          ![fiber, fiber?.alternate].includes(currentlyFiber)
+        )) {
+          // const path = findFiberPath(currentlyFiber)
+          // const targetFiber = findTagFiber(currentlyFiber, path, wipRoot);
+          // handleFunctionComponent(targetFiber, !! targetFiber.ref);
+          // currentlyFiber.type(currentlyFiber.pendingProps, currentlyFiber.ref);
+        }
       }
 
       if ((_.isFunction(x) || x !== oldValue) && !(currentFiber.flags & UPDATE)) {
@@ -124,11 +138,9 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
       //   //  hook.tag &= ~EFFECT_HOOK_HAS_EFFECT;
       //  }
       if (!isDepEqual(hook.deps, deps)) {
-        setFiberWithFlags(fiber, flags);
-        // if (rootFiber) {
-        //   hook.tag |= EFFECT_HOOK_HAS_EFFECT;
-        //   hook.deps = deps;
-        // }
+        if (!(fiber.flags & flags)) {
+          setFiberWithFlags(fiber, flags);
+        }
       }
 
       hook.create = create;
@@ -137,7 +149,8 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
     }
     // 执行时机不对。应该是先存起来。
     // // create执行时机应该是在commit之后。
-    // const destroy = create()
+    // const destroy = create();
+
     const newHook: IEffectHook = {
       id: effectId++,
       tag: tag | EFFECT_HOOK_HAS_EFFECT, // TODO,
@@ -145,11 +158,15 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
       destroy: null,
       fiber,
       deps,
+      pendingDeps: deps,
       next: null
     }
+    // console.warn('初始化', _.cloneDeep(newHook))
     // 首次进来必定需要更新。
-    pushEffect(fiber, newHook)
-    setFiberWithFlags(fiber, flags);
+    pushEffect(fiber, newHook);
+    if (!(fiber.flags & flags)) {
+      setFiberWithFlags(fiber, flags);
+    }
     //  console.log(fiber, '打上fiber', flags, newHook.tag);
     fiber.hook.push(newHook)
   }
@@ -193,7 +210,7 @@ export function MyUseMemo<T>(cb: () => T, deps: any[]): T {
   return newHook.memoizeState
 }
 
-export function MyUseImperativeHandle<T>(ref: MyRef<T>, handle: () => T, deps?: any[]){
+export function MyUseImperativeHandle<T>(ref: MyRef<T>, handle: () => T, deps?: any[]) {
   return MyUseLayoutEffect(() => {
     const instance = handle();
     if (_.isFunction(ref)) {
@@ -233,7 +250,7 @@ export function MyUseContext<T>(context: MyContext<T>): T {
   if (fiber.alternate) {
     fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
     let f = fiber.dependencies?.firstContext;
-    while(f && f.context !== context) {
+    while (f && f.context !== context) {
       f = f.next;
     }
 
@@ -245,8 +262,8 @@ export function MyUseContext<T>(context: MyContext<T>): T {
 
   let memoizedValue = undefined;
   let f = fiber;
-  while(f) {
-    if (f.tag === PROVIDERCOMPONENT && f.elementType._context === context ) {
+  while (f) {
+    if (f.tag === PROVIDERCOMPONENT && f.elementType._context === context) {
       memoizedValue = f.memoizedProps.value;
       break;
     }
@@ -254,18 +271,18 @@ export function MyUseContext<T>(context: MyContext<T>): T {
   }
 
   const newContext: MyDependenciesContext<T> = {
-         context,
-         memoizedValue,
-         next: null
+    context,
+    memoizedValue,
+    next: null
   };
 
   if (!fiber.dependencies) {
-     fiber.dependencies = {
-       firstContext: newContext
-     }
+    fiber.dependencies = {
+      firstContext: newContext
+    }
   } else {
     let f = fiber.dependencies.firstContext;
-    while(f) {
+    while (f) {
 
       if (!f.next) {
         break;

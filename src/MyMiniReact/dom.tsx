@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { MyFiber, MyStateNode } from "./type";
-import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, PROVIDERCOMPONENT, TEXTCOMPONENT } from "./const";
+import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, PROVIDERCOMPONENT, SUSPENSECOMPONENT, TEXTCOMPONENT } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
 
 export function isTextComponent(fiber: MyFiber) {
@@ -11,6 +11,7 @@ export function isHostComponent(fiber: MyFiber) {
   return fiber.tag === HOSTCOMPONENT || isTextComponent(fiber)
   || fiber.tag === FRAGMENTCOMPONENT
   || fiber.tag === PROVIDERCOMPONENT
+  || fiber.tag === SUSPENSECOMPONENT
 }
 
 export const findChildStateNode = (fiber: MyFiber | null) => {
@@ -101,8 +102,9 @@ export function updateDom(fiber: MyFiber) {
         }
         return;
       }
-
-      const oldProps = fiber.alternate?.memoizedProps || {};
+      const oldProps = fiber.alternate?.commitCount > 0 ? 
+      fiber.alternate?.memoizedProps || {} : {};
+      // console.log({newProps, oldProps})
       Object.keys(oldProps).forEach(key => {
         if (key === 'style') {
           const styles = (dom as HTMLElement).style || {};
@@ -171,7 +173,8 @@ export function createDom(fiber: MyFiber) {
     const dom = document.createElement(
     [
       FRAGMENTCOMPONENT,
-      PROVIDERCOMPONENT
+      PROVIDERCOMPONENT,
+      SUSPENSECOMPONENT
     ].includes(fiber.tag)  ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
     fiber.stateNode = dom;
     // console.log('创建dom', dom);

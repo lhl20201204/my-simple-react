@@ -58,23 +58,27 @@ export const CONTINUSE = 0b00010;
 export const DEFAULTLANE = 0b00100;
 
 
-export const ROOTCOMPONENT = 0b00000;
+export const ROOTCOMPONENT = 0b0000000000000;
 
-export const TEXTCOMPONENT = 0b000001;
+export const TEXTCOMPONENT = 0b0000000000001;
 
-export const HOSTCOMPONENT = 0b000010;
+export const HOSTCOMPONENT = 0b0000000000010;
 
-export const FUNCTIONCOMPONENT = 0b000100;
+export const FUNCTIONCOMPONENT = 0b0000000000100;
 
-export const MEMOCOMPONENT = 0b001000;
+export const MEMOCOMPONENT = 0b0000000001000;
 
-export const FRAGMENTCOMPONENT = 0b010000;
+export const FRAGMENTCOMPONENT = 0b0000000010000;
 
-export const FORWARDREFCOMPONENT =0b100000;
+export const FORWARDREFCOMPONENT = 0b0000000100000;
 
-export const PROVIDERCOMPONENT = 0b1000000;
+export const PROVIDERCOMPONENT = 0b0000001000000;
 
-export const CONSUMNERCOMPONENT = 0b10000000;
+export const CONSUMNERCOMPONENT = 0b0000010000000;
+
+export const SUSPENSECOMPONENT = 0b0000100000000;
+
+export const LAZYCOMPONENT = 0b0001000000000;
 
 
 // let globalContextFlags: number = NOCONTEXT;
@@ -175,4 +179,14 @@ export function getIsFlushEffecting() {
 
 export function setIsFlushEffecting(bol: boolean) {
   isFlushEffecting = bol
+}
+
+let pendingUpdateFiberList = [];
+
+export function addToPendingUpdateFiberList(start: number, end: number, fiber: MyFiber) {
+  pendingUpdateFiberList.splice(start, end, fiber)
+}
+
+export function getPendingUpdateFiberList() {
+  return pendingUpdateFiberList
 }

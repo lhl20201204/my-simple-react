@@ -28,6 +28,7 @@
   <div id="loadingTip"></div>
 
   <div id="app"></div>
+  <div id="app-modal"> </div>
   <!-- <img id="source" src="./src/MyMiniReact/jsx.png" /> -->
   <canvas id="view" width="500" height="700"></canvas>
   <script>
@@ -62,7 +63,9 @@
       window.reactForwardRefType = Symbol('react.forward_ref')
       window.reactFragmentType = Symbol('react.Fragment')
       window.reactProviderType = Symbol('react.provider')
-      window.reactContextType = Symbol('react.context')
+      window.reactContextType = Symbol('react.context');
+      window.reactSuspenseType = Symbol('react.suspense');
+      window.reactLazyType = Symbol('react.lazy')
       // console.log(window)
       window.promiseResolve()
     } else {
@@ -71,7 +74,7 @@
           type: 'fetch',
           script: () => {
             const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.js"
             return script
           },
         },
@@ -79,7 +82,7 @@
           type: 'fetch',
           script: () => {
             const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.js"
             return script
           },
         },
@@ -110,6 +113,28 @@
   window.reactMemoType = App2.$$typeof;
   const dom3 = <><div></div><span></span></>;
   window.reactFragmentType = dom3.type;
+  const dom4 = React.lazy(async () => {
+    return {
+      default: function A() {
+        return 'AAA'
+      }
+    }
+  });
+  window.reactLazyType = dom4.$$typeof;
+  window.reactSuspenseType = React.Suspense;
+
+  console.log(
+  React,
+  React.Suspense,
+  React.lazy(async () => {
+    return {
+      default: function A() {
+        return 'AAA'
+      }
+    }
+  }),
+   <React.Suspense />
+  , window.ReactDOM.createPortal(dom3, document.getElementById('app-modal')));
   console.log(window.reactType,window.reactContextType, window.reactProviderType,  App2, <App2 />, dom3,
   <React.Fragment><div></div><div></div></React.Fragment>,
   );
@@ -130,7 +155,12 @@
     (async () => {
       await window.deferPromise2;
       // console.log(window.WindomDom)
+      if (React.version === '17.0.2') {
       ReactDOM.render(window.WindomDom, document.getElementById('app'))
+      } else {
+      const root = ReactDOM.createRoot(document.getElementById('app'));
+      root.render(window.WindomDom);
+       }
     })()
   }
 `;

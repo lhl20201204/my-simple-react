@@ -1,11 +1,11 @@
 import _ from "lodash";
 import { commitRoot, disconnectElementAndFiber } from "./commit";
-import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, PROVIDERCOMPONENT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
+import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, LAZYCOMPONENT, MEMOCOMPONENT, MyReactFiberKey, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
 import { MyFiber, MyReactElement, MySingleReactNode } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
-import { originConsoleLog, trackFiber } from "./test";
+import { originConsoleLog, trackFiber, untrackFiber } from "./test";
 
 
 let id = 0;
@@ -24,19 +24,23 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
       fiberTag = TEXTCOMPONENT;
     } else if (typeof element?.type === 'function') {
       fiberTag = FUNCTIONCOMPONENT;
-     } else if (element?.type?.$$typeof === window.reactMemoType) {
+    } else if (element?.type?.$$typeof === window.reactMemoType) {
       fiberTag = MEMOCOMPONENT;
-     } else if (element?.type?.$$typeof === window.reactForwardRefType) {
+    } else if (element?.type?.$$typeof === window.reactForwardRefType) {
       fiberTag = FORWARDREFCOMPONENT;
-     } else if (element?.type === window.reactFragmentType) {
+    } else if (element?.type === window.reactFragmentType) {
       fiberTag = FRAGMENTCOMPONENT;
-     } else if (element?.type?.$$typeof === window.reactProviderType) {
+    } else if (element?.type?.$$typeof === window.reactProviderType) {
       fiberTag = PROVIDERCOMPONENT;
-     } else if (element?.type?.$$typeof === window.reactContextType) {
+    } else if (element?.type?.$$typeof === window.reactContextType) {
       fiberTag = CONSUMNERCOMPONENT;
-     } else {
+    } else if (element?.type === window.reactSuspenseType) {
+      fiberTag = SUSPENSECOMPONENT;
+    } else if (element?.type?.$$typeof === window.reactLazyType) {
+      fiberTag = LAZYCOMPONENT;
+    } else {
       fiberTag = HOSTCOMPONENT;
-     }
+    }
   }
 
   const needNewCreate = !alternateFiber?.alternate;
@@ -57,6 +61,7 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
     elementType: (element as MyReactElement)?.type,
     firstEffect: null,
     hook: [],
+    commitCount: 0,
     updateQueue: {
       firstEffect: null,
       lastEffect: null,
@@ -82,11 +87,12 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
     newFiber.pendingProps = getPropsByElement(element),
-    newFiber.memoizedProps = alternateFiber.memoizedProps;
+      newFiber.memoizedProps = alternateFiber.memoizedProps;
     newFiber.ref = (element as MyReactElement)?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
     newFiber.childLanes = alternateFiber.childLanes;
+    newFiber.commitCount = alternateFiber.commitCount;
 
     // if (alternateFiber.updateQueue.lastEffect) {
     //   if(alternateFiber.updateQueue.lastEffect.next ) {
@@ -191,6 +197,77 @@ export function performUnitOfWork(): MyFiber | null {
   nextFiber = temp?.sibling;
   setWorkInProgress(nextFiber);
   return nextFiber;
+}
+
+export function clearFiber(fiber: MyFiber) {
+  untrackFiber(fiber)
+  fiber.childLanes = null;
+  fiber.flags = null;
+  fiber.hook = null;
+  fiber.index = null;
+  fiber.key = null;
+  fiber.lanes = null;
+  fiber.lastEffect = null;
+  disconnectElementAndFiber(fiber)
+  fiber.dependencies = null;
+  fiber.element = null;
+  fiber.memoizedProps = null;
+  fiber.memoizedState = null;
+  fiber.pendingProps = null;
+  fiber.nextEffect = null;
+  fiber.elementType = null;
+  fiber.commitCount = null;
+  fiber.id = null;
+  fiber.ref = null;
+  fiber.type = null;
+  fiber.tag = null;
+  let f = fiber.updateQueue?.firstEffect;
+  while (f) {
+    f.fiber = null;
+    f = f.next;
+  }
+  if (fiber.updateQueue) {
+    fiber.updateQueue.lastEffect = null;
+    fiber.updateQueue.firstEffect = null;
+  }
+  fiber.updateQueue = null;
+  if (fiber.stateNode) {
+    fiber.stateNode[MyReactFiberKey] = null;
+  }
+  fiber.stateNode = null;
+  fiber.return = null;
+  fiber.sibling = null;
+  fiber.child = null;
+  if (fiber.alternate) {
+    fiber.alternate.alternate = null;
+    clearFiber(fiber.alternate);
+  }
+  fiber.alternate = null;
+}
+
+export function getAllChildrenFiber(fiber: MyFiber, count = 0): MyFiber[]  {
+  const ret: MyFiber[] = [];
+  if (count > 0) {
+     ret.push(fiber)
+  }
+  let f = fiber.child;
+  while (f) {
+    ret.push(...getAllChildrenFiber(f, count + 1))
+    f = f.sibling;
+  }
+  return ret;
+}
+
+export function dfsClearFiber(fiber: MyFiber) {
+  const list = getAllChildrenFiber(fiber);
+  const list2 = fiber.alternate ? getAllChildrenFiber(fiber.alternate) : [];
+  // console.log(_.cloneDeep([...list, ...list2]))
+  for(const f of list) {
+    clearFiber(f)
+  }
+  for(const f of list2) {
+    clearFiber(f)
+  }
 }
 
 

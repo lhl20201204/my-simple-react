@@ -1,11 +1,11 @@
-import WindomDom from "./test6";
+import WindomDom from "./test11";
 import { useEffect } from "./utils";
 
 function A() {
   useEffect(() => {
   }, [])
   return <>
-  <div></div>
+  <div key={'nullDiv'}></div>
   {WindomDom}
   </>;
 }

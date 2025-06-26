@@ -1,9 +1,21 @@
-import _ from "lodash";
-import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, isInDebugger, LAYOUT_FLAGS, NOEFFECT, NOLANE, REFEFFECT, ROOTCOMPONENT } from "./const";
+import _, { first, update } from "lodash";
+import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, isInDebugger, LAYOUT_FLAGS, NOEFFECT, NOLANE, REFEFFECT, ROOTCOMPONENT, UPDATE, addToPendingUpdateFiberList } from "./const";
 import { createDom, isHostComponent } from "./dom";
-import { getRootFiber, setFiberWithFlags } from "./beginWork";
-import { MyFiber } from "./type";
+import { getRootFiber, pushEffect, setFiberWithFlags } from "./beginWork";
+import { IEffectHook, MyFiber } from "./type";
 import { getEffectListId, isDepEqual, logEffectType, logFiberIdPath } from "./utils";
+
+// function resetEffectQueue(fiber: MyFiber) {
+//   const hookList = fiber.hook;
+//   fiber.updateQueue.firstEffect = null;
+//   fiber.updateQueue.lastEffect = null;
+//   for(const hook of  hookList) {
+//     if (((hook as IEffectHook).tag & EFFECT_LAYOUT)
+//      || ((hook as IEffectHook).tag & EFFECT_PASSIVE)) {
+//     pushEffect(fiber, hook as IEffectHook)
+//     }
+//   }
+// }
 
 export function sumbitEffect(fiber: MyFiber) {
   const hasEffectBol = (fiber.flags & PASSIVE_FLAGS);
@@ -16,7 +28,7 @@ export function sumbitEffect(fiber: MyFiber) {
   // }
 
   if ((hasEffectBol || hadLayoutEffectBol || deleteBol) && (fiber.tag !== ROOTCOMPONENT)) {
-    const parentFiber = getRootFiber(fiber);
+    const parentFiber =  getRootFiber(fiber);
     // 递归上传effect
     let f = fiber.updateQueue.firstEffect;
     if (fiber.updateQueue.lastEffect) {
@@ -26,7 +38,11 @@ export function sumbitEffect(fiber: MyFiber) {
     // if (fiber.updateQueue.lastEffect) {
     //   fiber.updateQueue.lastEffect.next = null;
     // }
+    // let c = 0;
     while (f) {
+      // if (c ++ > 100) {
+      //   throw new Error('jjjj')
+      // }
       const isSame = isDepEqual(f.deps, f.pendingDeps);
       // if (f.id === 9) {
       //   console.warn(_.cloneDeep({ f, deps: [[...f.deps], [...f.pendingDeps ?? []]], isSame }))
@@ -59,7 +75,7 @@ export function sumbitEffect(fiber: MyFiber) {
           parentFiber.updateQueue.lastEffect.next = f
         }
         parentFiber.updateQueue.lastEffect = f;
-        // console.log('插入', f.id, f, deleteBol,
+        // console.log('插入', f.id, _.cloneDeep(f), deleteBol,
         //   _.cloneDeep({updateQueue: parentFiber.updateQueue}),
         //    [getEffectListId(parentFiber, true)]);
         // console.error('sumbitEffect', logFiberIdPath(fiber), f.id, _.cloneDeep({ f }),
@@ -79,7 +95,10 @@ export function sumbitEffect(fiber: MyFiber) {
     // if (parentFiber.updateQueue.lastEffect) {
     //   parentFiber.updateQueue.lastEffect.next = null;
     // }
-
+    // if (!deleteBol) {
+    //  resetEffectQueue(fiber)
+    // }
+  
     if (deleteBol && (fiber.ref) && isHostComponent(fiber)) {
       fiber.flags |= REFEFFECT;
     }
@@ -89,13 +108,14 @@ export function sumbitEffect(fiber: MyFiber) {
     if (hasEffectBol) {
       fiber.flags &= ~PASSIVE_FLAGS
     }
-  }
+  } 
 }
 
 export function completeWork(fiber: MyFiber) {
   if (fiber.memoizedProps !== fiber.pendingProps) {
     console.error('-------->', _.cloneDeep({ fiber }))
   }
+  fiber.commitCount ++;
   if (fiber && isHostComponent(fiber) && !fiber.stateNode) {
     createDom(fiber);
   }
@@ -109,7 +129,7 @@ export function completeWork(fiber: MyFiber) {
   //     id: fiber.id,
   //     fiber }))
 
-  const parentFiber = getRootFiber(fiber);
+  const parentFiber = fiber.return; // getRootFiber(fiber);
   if (fiber.lastEffect && parentFiber && fiber.tag !== ROOTCOMPONENT) {
     if (parentFiber.lastEffect) {
       parentFiber.lastEffect.nextEffect = fiber.firstEffect;
@@ -125,7 +145,7 @@ export function completeWork(fiber: MyFiber) {
 
 
   if (fiber.flags > NOEFFECT && fiber.tag !== ROOTCOMPONENT) {
-    const parentFiber = getRootFiber(fiber)
+    const parentFiber = fiber.return; // getRootFiber(fiber)
     if (parentFiber.lastEffect) {
       parentFiber.lastEffect.nextEffect = fiber;
     } else {
@@ -140,10 +160,16 @@ export function completeWork(fiber: MyFiber) {
   }
 
 
-  sumbitEffect(fiber);
+  // sumbitEffect(fiber);
   // console.error('completeWork', _.cloneDeep(fiber));
   fiber.childLanes = NOLANE;
   if (fiber.lanes !== NOLANE) {
-    console.error('------>', fiber.id, _.cloneDeep(fiber))
+    // console.error('------>', fiber.id, _.cloneDeep(fiber))
+    if (fiber.flags & UPDATE) {
+      // console.log('enter');
+      addToPendingUpdateFiberList(0, 0, fiber);
+    } else {
+      console.error('------>', fiber.id, _.cloneDeep(fiber))
+    }
   }
 }

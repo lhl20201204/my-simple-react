@@ -208,50 +208,7 @@ function App() {
       // const arr = new Array(Math.floor(Math.random() * 10) + 1).fill(0).map((c, i) => i + 1).sort(() => Math.random() - 0.5);
       // console.error(arr)
       // setArr(arr)
-      testMemoryLeak(setArr, arr, [
-        [
-          "18",
-          "13",
-          "19",
-          "21",
-          "10",
-          "17",
-          "9",
-          "27",
-          "25",
-          "14",
-          "16",
-          "11",
-          "15",
-          "24",
-          "26",
-          "22",
-          "12",
-          "20",
-          "23"
-        ],
-        [
-          "12",
-          "11",
-          "10",
-          "9",
-          "13",
-          "14",
-          "8",
-          "7"
-        ],
-        [
-          "3",
-          "1",
-          "2"
-        ],
-        [
-          "14",
-          "15",
-          "13",
-          "12"
-        ]
-      ])
+      testMemoryLeak(setArr, arr, 10)
     }}>点击跟还</button>
     <>
       <div>div</div>
@@ -263,6 +220,6 @@ function App() {
   </div>
 }
 
-const dom = <App />
+const dom = <App key={'test3'}/>
 
 export default dom;

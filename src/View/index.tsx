@@ -146,7 +146,7 @@ class TreeVisualizer {
     const treeHeight = this.calculateTreeHeight(root) * this.levelHeight;
 
     // 设置canvas尺寸，加上padding
-    this.canvas.width = treeWidth + this.padding * 2;
+    this.canvas.width = treeWidth + this.padding * 2 + 100;
     this.canvas.height = treeHeight + this.padding * 2;
 
     // 清空画布

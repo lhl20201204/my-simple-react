@@ -1,4 +1,4 @@
-import { ReactDOM, sleep, useCallback, useEffect, useLayoutEffect, useMemo } from './utils'
+import { memo, ReactDOM, sleep, useCallback, useEffect, useLayoutEffect, useMemo } from './utils'
 import { payloadChildState, useChildState, useParentState } from "./useGroupState";
 
 const Parent = (props: { children: any }) => {
@@ -55,10 +55,10 @@ const Parent = (props: { children: any }) => {
   
   console.log('render---Parent', state)
   const refCb = useCallback((x) => {
-     console.log([x])
+     console.log('parent-ref',[x])
   }, [])
 
-  return <div ref={refCb} style={{
+  return <div id="parent" ref={refCb} style={{
     border: '1px solid green',
     padding: '10px',
     margin: '10px'
@@ -69,14 +69,15 @@ const Parent = (props: { children: any }) => {
   </div>;
 }
 
+
 const Middle = ({ base }: { base: number }) => {
   console.log('Middle')
 
   return <div style={{ border: '1px solid blue', padding: '10px' }}>
     middle
-    <Child name={`${base + 4}`} key={`${base + 4}`} />
-    <Child name={`${base + 5}`} key={`${base + 5}`} />
-    <Child name={`${base + 6}`} key={`${base + 6}`} />
+    <MemoChild name={`${base + 4}`} key={`${base + 4}`} />
+    <MemoChild name={`${base + 5}`} key={`${base + 5}`} />
+    <MemoChild name={`${base + 6}`} key={`${base + 6}`} />
   </div>;
 }
 
@@ -98,7 +99,7 @@ const Child = (props: { name: string }) => {
   if (props.name === '3' && state !== 10) {
     // 使用 setTimeout 来测试批处理行为
     setTimeout(() => {
-      console.error('setTimeout-child');
+      console.warn('setTimeout-child');
       setInnerState(10)
     }, 0)
   }
@@ -106,7 +107,11 @@ const Child = (props: { name: string }) => {
   console.log('Child', props.name, state);
   return <div
       id={props.name}
-     style={{ border: '1px solid red', padding: '10px', marginBottom: '20px' }}>
+     style={{ border: '1px solid red', padding: '10px', marginBottom: '20px' }}
+     ref={(x) => {
+      console.log('ref-child', props.name, state, [x])
+     }}
+     >
     <div>{props.name}Child--{state}
       <button  key={props.name + '_btn'} onClick={() => {
         setState(state + 1)
@@ -114,6 +119,8 @@ const Child = (props: { name: string }) => {
     </div>
   </div>;
 }
+const MemoChild = memo(Child);
+
 
 const dom =  <div>
   <Parent key={'Parent'}>

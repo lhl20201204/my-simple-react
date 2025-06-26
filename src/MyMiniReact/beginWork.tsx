@@ -1,12 +1,13 @@
 import _ from "lodash";
-import { CONSUMNERCOMPONENT, DEFAULTLANE, DELETE, deletions, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, setBatchUpdating, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
-import { createFiber } from "./fiber";
-import { MyContext, MyFiber, MyReactNode, MySingleReactNode } from "./type";
+import { CONSUMNERCOMPONENT, DEFAULTLANE, DELETE, deletions, EFFECT_LAYOUT, EFFECT_PASSIVE, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, LAZYCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setBatchUpdating, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
+import { createFiber, dfsClearFiber } from "./fiber";
+import { IEffectHook, MyContext, MyFiber, MyReactNode, MySingleReactNode } from "./type";
 import { getEffectListId, getPropsByElement, isPropsEqual, isStringOrNumber, logEffectType, logFiberIdPath } from "./utils";
 import { sumbitEffect } from "./completeWork";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
 import { isHostComponent, isTextComponent } from "./dom";
 import { getElementId } from "./jsx-dev-runtime";
+import { findFiberPath, findTagFiber, pushEffect } from "./hook";
 
 export * from './hook'
 
@@ -350,6 +351,55 @@ export function notifyChildFiber<T>(fiber: MyFiber, context: MyContext<T>,
   }
 }
 
+export function handlePromiseError(fiber: MyFiber, e: Error) {
+  if (!(e instanceof Promise)) {
+    throw e;
+  }
+  let suspenseFiber = fiber;
+  while (suspenseFiber && suspenseFiber.tag !== SUSPENSECOMPONENT) {
+    suspenseFiber = suspenseFiber.return;
+  }
+  // TODO ErrorBoundary
+  if (!suspenseFiber || suspenseFiber.tag !== SUSPENSECOMPONENT) {
+    throw e;
+  }
+  //  console.warn('找到suspenseFiber', suspenseFiber)
+  e.then(() => {
+    const path = findFiberPath(suspenseFiber);
+    const currentRootFiber = path[path.length - 1];
+    if (currentRootFiber.tag !== ROOTCOMPONENT) {
+      return;
+    }
+    const targetFiber = wipRoot ? findTagFiber(suspenseFiber, path, wipRoot) : rootFiber ? findTagFiber(suspenseFiber, path, rootFiber) : suspenseFiber;
+    setFiberWithFlags(targetFiber, UPDATE);
+    ensureRootIsScheduled(true);
+  })
+
+  
+
+  suspenseFiber.firstEffect = null;
+  suspenseFiber.lastEffect = null;
+  // let hookList = suspenseFiber.hook;
+  suspenseFiber.updateQueue.firstEffect = null;
+  suspenseFiber.updateQueue.lastEffect = null;
+  dfsClearFiber(suspenseFiber);
+  if (suspenseFiber.alternate) {
+     dfsClearFiber(suspenseFiber.alternate);
+  }
+  suspenseFiber.child = null;
+  // for(const hook of  hookList) {
+  //   if (((hook as IEffectHook).tag & EFFECT_LAYOUT)
+  //    || ((hook as IEffectHook).tag & EFFECT_PASSIVE)) {
+  //   pushEffect(suspenseFiber, hook as IEffectHook)
+  //   }
+  // }
+  // 这里一定没有effect 。
+  // console.warn('重新enter', _.cloneDeep(suspenseFiber))
+  return reconcileChildren(suspenseFiber, [
+    suspenseFiber.pendingProps.fallback
+  ])
+}
+
 // let debugggerIndex  =0;
 export function beginWork(fiber: MyFiber): MyFiber | null {
   // console.log('enter---->beginWork', fiber)
@@ -442,8 +492,38 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     return next;
   }
 
+  if (fiber.tag === SUSPENSECOMPONENT) {
+    fiber.flags &= ~UPDATE;
+  }
+
+  if (fiber.tag === LAZYCOMPONENT) {
+    try {
+      const type = fiber.type;
+      const Comp = type._init(type._payload);
+      resetLaneProps(fiber)
+      return reconcileChildren(fiber, [
+        {
+          elementId: -4,
+          $$typeof: window.reactType,
+          type: Comp,
+          props: fiber.pendingProps,
+          ref: fiber.ref,
+          _owner: null,
+          _store: null,
+          key: fiber.key
+        }
+      ])
+    } catch (e) {
+      return handlePromiseError(fiber, e);
+    }
+  }
+
   if (fiber.tag === FUNCTIONCOMPONENT || fiber.tag === FORWARDREFCOMPONENT) {
-    return handleFunctionComponent(fiber, fiber.tag === FORWARDREFCOMPONENT);
+    try {
+      return handleFunctionComponent(fiber, fiber.tag === FORWARDREFCOMPONENT);
+    } catch (e) {
+      return handlePromiseError(fiber, e);
+    }
   }
 
   if (_.isNil(fiber.pendingProps?.children)) {

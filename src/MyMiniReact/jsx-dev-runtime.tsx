@@ -1,4 +1,4 @@
-import { runInRecordLog } from "./test";
+import { originConsoleLog, runInRecordLog } from "./test";
 import { MyElement, MyElementType, MyElmemetKey, MyFiberRef, MyFunctionComponent, MyFunctionComponentProps, MyProps, MyReactNode, MyRef } from "./type";
 import _ from "lodash";
 declare global {
@@ -14,6 +14,8 @@ declare global {
     reactForwardRefType: Symbol;
     reactContextType: Symbol;
     reactProviderType: Symbol;
+    reactSuspenseType: Symbol;
+    reactLazyType: Symbol;
   }
 
   type CustomCSSProperties ={
@@ -186,12 +188,16 @@ P extends MyProps, K extends MyElmemetKey>(
   props: P & (T extends MyFunctionComponent ? MyFunctionComponentProps<P> : MyProps),
   key: K
 ): MyElement<T, P, K> {
-  // console.log({type, props, key})
-  const isMemo = type['$$typeof'] === window.reactMemoType;
-  const isForWardRef =  type['$$typeof'] === window.reactForwardRefType;
-  const bol = isMemo || isForWardRef
-  let fnType = bol ? getType(type): type;
-  const originFnType = bol ? getType(type) : type;
+
+  // if (props.id === 'test') {
+  //   console.trace('test', props)
+  // }
+
+  // const isMemo = type['$$typeof'] === window.reactMemoType;
+  // const isForWardRef =  type['$$typeof'] === window.reactForwardRefType;
+  // const bol = isMemo || isForWardRef
+  let fnType = type;
+  const originFnType = type;
   if (_.isFunction(fnType) && !fnType['jump-hoc']) {
     // if (!globalHocMap.has(type)) {
     //   globalHocMap.set(type, new Map());
@@ -201,21 +207,31 @@ P extends MyProps, K extends MyElmemetKey>(
 
     const targetKey = type;
 
+    // console.error('hocMap----->', hocMap)
+
     if (!hocMap.has(targetKey)) {
-      const fn = function (props, ref) {
-        // return jsxDev((props, ref) => {
-        //   console.error('render')
-        //  return runInRecordLog(() => fnType(props, ref))
-        // }, { ...props, ref }, key)
-        // console.error('render----->', originFnType, key)
-        // if (id ++ > 100) {
-        //   throw new Error('test')
-        // }
-        return runInRecordLog(() => originFnType(props, ref))
+      const obj = {
+        [originFnType.name ?? 'generateComponent']: function (props, ref) {
+          // return jsxDev((props, ref) => {
+          //   console.error('render')
+          //  return runInRecordLog(() => fnType(props, ref))
+          // }, { ...props, ref }, key)
+          // console.error('render----->', originFnType, key)
+          // if (id ++ > 100) {
+          //   throw new Error('test')
+          // }
+          return runInRecordLog(() => {
+            // console.error('劫持----->', originFnType)
+            const ret = originFnType(props, ref)
+            // console.error('<-----劫持', originFnType)
+            return ret
+          })
+        }
       };
+      const generateComponent = obj[originFnType.name ?? 'generateComponent'];
       // console.error('hoc----->', originFnType)
-      fn['jump-hoc'] = true;
-      hocMap.set(targetKey, changeType(type, fn));
+      generateComponent['jump-hoc'] = true;
+      hocMap.set(targetKey, changeType(type, generateComponent));
     }
     fnType = hocMap.get(targetKey);
     // if (id ++ > 100) {
@@ -226,7 +242,7 @@ P extends MyProps, K extends MyElmemetKey>(
     fnType = type;
   }
 
-  return {
+  const ret: MyElement<T, P, K> = {
     elementId: elementId++,
     $$typeof: window.reactType,
     type: fnType,
@@ -238,6 +254,8 @@ P extends MyProps, K extends MyElmemetKey>(
       validated: false
     }
   };
+  // console.log(ret)
+  return ret;
 }
 
 export const Fragment = window.reactFragmentType ?? Symbol('React.Fragment')

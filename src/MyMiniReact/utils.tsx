@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { MyElement, MyFiber, MyProps } from "./type";
+import { MyElement, MyFiber, MyProps, MySingleReactNode } from "./type";
 import { IRenderNode, renderTree } from "../View";
 import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts, MEMOCOMPONENT } from "./const";
 
@@ -26,12 +26,12 @@ export function getUUID(str: string) {
   return str2;
 }
 
-export function isStringOrNumber(element: MyElement | null | MyProps) {
+export function isStringOrNumber(element: MySingleReactNode) {
   return _.isString(element) || _.isNumber(element) || _.isBoolean(element) || _.isNil(element);
 }
 
-export function getPropsByElement(element: MyElement): MyProps {
-  return isStringOrNumber(element) ? element : element.props
+export function getPropsByElement(element: MySingleReactNode): MyProps {
+  return isStringOrNumber(element) ? (element as unknown as MyProps) : element.props
 }
 
 export function shallowEqual(obj1: MyProps, obj2: MyProps) {
@@ -66,24 +66,6 @@ export function isPropsEqual(obj1: MyProps, obj2: MyProps, fiber: MyFiber) {
     return (fiber.type.compare ?? shallowEqual)(obj1, obj2);
   }
   return obj1 === obj2;
-  if (isStringOrNumber(obj1)) {
-    return obj1 === obj2;
-  }
-
-  if (!_.isObject(obj1) || _.isNil(obj1)) {
-    throw '类型错误'
-  }
-
-  const keys = _.keys(obj1);
-  if (_.size(keys) !== _.size(_.keys(obj2))) {
-    return false;
-  }
-  for (const key of keys) {
-    if (obj1[key] !== obj2[key]) {
-      return false;
-    }
-  }
-  return true;
 }
 
 export function isDepEqual(dep1: Array<any> | null, dep2: Array<any> | null) {
@@ -123,7 +105,9 @@ export function logFiberTree(fiber: MyFiber) {
         f.type?.$$typeof === window.reactForwardRefType ? 'react.forwardRef' :
           f.type?.$$typeof === window.reactProviderType ? 'react.provider' :
             f.type?.$$typeof === window.reactContextType ? 'react.consumer' :
-              f.type;
+              f.type === window.reactSuspenseType ? 'react.suspense' :
+                f.type?.$$typeof === window.reactLazyType ? 'react.lazy' :
+                  f.type;
     //  console.log(name)
     if (typeof name === 'function') {
       name = (name as Function).name;

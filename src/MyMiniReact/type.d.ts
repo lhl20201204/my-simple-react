@@ -23,6 +23,32 @@ export type MyForwardRefComponent<T extends MyFunctionComponent> = {
   (props: MyFunctionComponentProps<T> & { ref?: MyRef }): MyReactNode;
 }
 
+export type MyLazyPayload<T> = {
+    _status: -1;
+    _result: () => Promise<{ default: T}>
+} | {
+  _status: 0;
+  _result:Promise<{ default: T}>;
+} | {
+  _status: 1;
+  _result: T;
+} | {
+  _status: 2;
+  _result: Error
+}
+
+export type MyLazyInitializer<T extends MyFunctionComponent> = (payload: MyLazyPayload<T>) => 
+    Error<Promise<{ default: T}>>
+   | { default: T}
+   | never
+
+export type MyLazyComponent<T extends MyFunctionComponent> = {
+  $$typeof: Symbol;
+  _init: MyLazyInitializer<T>;
+  _payload: MyLazyPayload<T>;
+  (props: MyFunctionComponentProps<T>): ReturnType<T>;
+}
+
 export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyReactNode ? f : 
 T extends MyForwardRefComponent<infer Y> ? MyFunctionComponentProps<Y> : never;
 
@@ -155,6 +181,7 @@ export type MyFiber = {
     lastEffect: null | IEffectHook,
   };
   element: MySingleReactNode | null;
+  commitCount: number;
   lastEffect: MyFiber | null;
   hook: IHook[];
   memoizedProps: MyProps;

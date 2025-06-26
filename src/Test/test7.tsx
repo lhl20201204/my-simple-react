@@ -15,7 +15,7 @@ const Post = forwardRef((props, ref) => {
 
   return (
     <div ref={(f) => {
-      console.log('div',[f])
+      console.log('div', count,[f])
     }}>
       <button onClick={() => setCount(c => c + 1)}>
         increment
