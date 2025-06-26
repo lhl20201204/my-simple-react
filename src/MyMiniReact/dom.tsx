@@ -1,17 +1,23 @@
 import _ from "lodash";
-import { MyFiber, MyStateNode } from "./type";
-import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, PROVIDERCOMPONENT, SUSPENSECOMPONENT, TEXTCOMPONENT } from "./const";
+import { MyFiber, MyPortalElement, MyStateNode } from "./type";
+import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, PORTAlCOMPONENT, PROVIDERCOMPONENT, ROOTCOMPONENT, SUSPENSECOMPONENT, TEXTCOMPONENT } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
+import { getUUID } from "./utils";
 
 export function isTextComponent(fiber: MyFiber) {
-  return fiber.tag === TEXTCOMPONENT
+  return fiber.tag === TEXTCOMPONENT;
+}
+
+export function isPortalComponent(fiber: MyFiber) {
+  return fiber.tag === PORTAlCOMPONENT;
 }
 
 export function isHostComponent(fiber: MyFiber) {
   return fiber.tag === HOSTCOMPONENT || isTextComponent(fiber)
-  || fiber.tag === FRAGMENTCOMPONENT
-  || fiber.tag === PROVIDERCOMPONENT
-  || fiber.tag === SUSPENSECOMPONENT
+    || fiber.tag === FRAGMENTCOMPONENT
+    || fiber.tag === PROVIDERCOMPONENT
+    || fiber.tag === SUSPENSECOMPONENT
+    || isPortalComponent(fiber);
 }
 
 export const findChildStateNode = (fiber: MyFiber | null) => {
@@ -35,16 +41,33 @@ const bodyMap = new Map<string, Function>()
 const weakMap = new WeakMap<MyStateNode, Map<string, Function>>();
 
 
+export function getTopFiber(fiber: MyFiber): HTMLElement | Text {
+  let f = fiber;
+  while(f && f.tag !== PORTAlCOMPONENT) {
+    f = f.return;
+  }
+  return f ? (f.element as MyPortalElement).containerInfo: fiberRoot.stateNode;
+}
+
+const topDomIdMap = new WeakMap();
+
+export function getUniqId(dom: any, key: string) {
+  if (!topDomIdMap.has(dom)) {
+    topDomIdMap.set(dom, getUUID(key))
+  }
+  return topDomIdMap.get(dom)
+}
+
 export function addEventListener(key: string, fiber: MyFiber) {
   // const rootFiber = getRootFiber(fiber);
-  const topDom = fiberRoot.stateNode;
+  const topDom = getTopFiber(fiber);
   if (!topDom) {
     throw new Error('')
   }
-  const isUseInDom =  ['onMouseEnter', 'onMouseLeave'].includes(key)
+  const isUseInDom = ['onMouseEnter', 'onMouseLeave'].includes(key)
 
-  const uniqId: any = key;
-   if (!weakMap.has(fiber.stateNode)) {
+  const uniqId: any = getUniqId(topDom, key);
+  if (!weakMap.has(fiber.stateNode)) {
     weakMap.set(fiber.stateNode, new Map())
   }
   const map = isUseInDom ? weakMap.get(fiber.stateNode) : bodyMap;
@@ -56,7 +79,7 @@ export function addEventListener(key: string, fiber: MyFiber) {
       runInBatchUpdate(() => {
         let dom = e.target as HTMLElement;
         let jump = false;
-        while (dom) {
+        while (dom && dom !== topDom) {
           // console.log(dom)
           const targetFiber: MyFiber = dom[MyReactFiberKey];
           if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key]) {
@@ -79,6 +102,7 @@ export function addEventListener(key: string, fiber: MyFiber) {
       })
     }
     eventDom.addEventListener(key.slice(2).toLowerCase(), fn)
+    // console.log('eventDom', eventDom, key)
     map.set(uniqId, fn);
   }
 
@@ -102,8 +126,8 @@ export function updateDom(fiber: MyFiber) {
         }
         return;
       }
-      const oldProps = fiber.alternate?.commitCount > 0 ? 
-      fiber.alternate?.memoizedProps || {} : {};
+      const oldProps = fiber.alternate?.commitCount > 0 ?
+        fiber.alternate?.memoizedProps || {} : {};
       // console.log({newProps, oldProps})
       Object.keys(oldProps).forEach(key => {
         if (key === 'style') {
@@ -111,10 +135,10 @@ export function updateDom(fiber: MyFiber) {
 
           _.forEach(styles, (v, k) => {
             //  console.log(v, k, newProps[key]?.[k]);
-            
+
             if (_.isNil(newProps[key]?.[k])) {
               // console.log(dom, '移除掉', k);
-             Reflect.deleteProperty(styles, k);
+              Reflect.deleteProperty(styles, k);
             }
           });
           // (dom as HTMLElement).style = styles;
@@ -143,9 +167,9 @@ export function updateDom(fiber: MyFiber) {
               _.forEach(newProps[key], (v, k) => {
                 // console.log('添加', dom, k, v);
                 (dom as HTMLElement).style[k] =
-                ['padding', 'margin', 'width', 'height'].includes(k) && _.isNumber(v)
-                ? `${v}px`
-                : v;
+                  ['padding', 'margin', 'width', 'height'].includes(k) && _.isNumber(v)
+                    ? `${v}px`
+                    : v;
               })
             } else {
               dom[key] = newProps[key];
@@ -159,7 +183,7 @@ export function updateDom(fiber: MyFiber) {
 }
 
 export function createDom(fiber: MyFiber) {
-  if (fiber.type === 'root') {
+  if (fiber.tag === ROOTCOMPONENT) {
     // return fiberRoot.stateNode;
     return null;
   }
@@ -170,27 +194,36 @@ export function createDom(fiber: MyFiber) {
     return fiber.stateNode;
   }
   if (isHostComponent(fiber)) {
-    const dom = document.createElement(
-    [
-      FRAGMENTCOMPONENT,
-      PROVIDERCOMPONENT,
-      SUSPENSECOMPONENT
-    ].includes(fiber.tag)  ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
+    const dom = isPortalComponent(fiber) ? 
+      (fiber.element as MyPortalElement).containerInfo 
+     :  document.createElement(
+      [
+        FRAGMENTCOMPONENT,
+        PROVIDERCOMPONENT,
+        SUSPENSECOMPONENT
+      ].includes(fiber.tag) ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
     fiber.stateNode = dom;
     // console.log('创建dom', dom);
     updateDom(fiber);
-    let f = fiber.child;
-    const ret = []
-    while (f) {
-      const childDom = findChildStateNode(f);
-      if (childDom) {
-        dom.appendChild(childDom)
-        ret.push(childDom)
-      }
-      f = f.sibling;
-    }
+    mountChildDom(fiber, dom);
     // console.log(dom, '添加', ret, fiber)
     return dom;
   }
   return null;
+}
+
+export function mountChildDom(fiber: MyFiber, dom: HTMLElement) {
+  let f = fiber.child;
+  const ret = []
+  while (f) {
+    if (isPortalComponent(f)) {
+      continue;
+    }
+    const childDom = findChildStateNode(f);
+    if (childDom) {
+      dom.appendChild(childDom)
+      ret.push(childDom)
+    }
+    f = f.sibling;
+  }
 }

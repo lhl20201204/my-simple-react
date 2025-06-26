@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { MyElement, MyFiber, MyProps, MySingleReactNode } from "./type";
 import { IRenderNode, renderTree } from "../View";
-import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts, MEMOCOMPONENT } from "./const";
+import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts, MEMOCOMPONENT, PORTAlCOMPONENT } from "./const";
 
 const joinSign = '#######';
 
@@ -107,6 +107,7 @@ export function logFiberTree(fiber: MyFiber) {
             f.type?.$$typeof === window.reactContextType ? 'react.consumer' :
               f.type === window.reactSuspenseType ? 'react.suspense' :
                 f.type?.$$typeof === window.reactLazyType ? 'react.lazy' :
+                f.tag === PORTAlCOMPONENT ? 'react.portal' :
                   f.type;
     //  console.log(name)
     if (typeof name === 'function') {

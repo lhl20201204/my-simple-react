@@ -1,7 +1,7 @@
 import _ from "lodash";
-import { CONSUMNERCOMPONENT, DEFAULTLANE, DELETE, deletions, EFFECT_LAYOUT, EFFECT_PASSIVE, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, LAZYCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setBatchUpdating, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
+import { CONSUMNERCOMPONENT, DEFAULTLANE, DELETE, deletions, EFFECT_LAYOUT, EFFECT_PASSIVE, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getBatchUpdating, INSERTBEFORE, isInDebugger, LAZYCOMPONENT, MEMOCOMPONENT, NOEFFECT, NOLANE, PLACEMENT, PORTAlCOMPONENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setBatchUpdating, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
 import { createFiber, dfsClearFiber } from "./fiber";
-import { IEffectHook, MyContext, MyFiber, MyReactNode, MySingleReactNode } from "./type";
+import { IEffectHook, MyContext, MyFiber, MyPortalElement, MyReactNode, MySingleReactNode } from "./type";
 import { getEffectListId, getPropsByElement, isPropsEqual, isStringOrNumber, logEffectType, logFiberIdPath } from "./utils";
 import { sumbitEffect } from "./completeWork";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
@@ -490,6 +490,13 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     resetLaneProps(fiber)
     // console.log(fiber.lanes)
     return next;
+  }
+
+  if (fiber.tag === PORTAlCOMPONENT) {
+    resetLaneProps(fiber);
+    return reconcileChildren(fiber, [
+      (fiber.element as MyPortalElement)?.children
+    ])
   }
 
   if (fiber.tag === SUSPENSECOMPONENT) {

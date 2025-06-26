@@ -1,11 +1,12 @@
 import _ from "lodash";
 import { commitRoot, disconnectElementAndFiber } from "./commit";
-import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, LAZYCOMPONENT, MEMOCOMPONENT, MyReactFiberKey, NOEFFECT, NOLANE, PLACEMENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
-import { MyFiber, MyReactElement, MySingleReactNode } from "./type";
+import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, LAZYCOMPONENT, MEMOCOMPONENT, MyReactFiberKey, NOEFFECT, NOLANE, PLACEMENT, PORTAlCOMPONENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
+import { MyFiber, MyPortalElement, MyReactElement, MySingleReactNode } from "./type";
 import { beginWork } from "./beginWork";
 import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
 import { originConsoleLog, trackFiber, untrackFiber } from "./test";
+import { isPortalComponent } from "./dom";
 
 
 let id = 0;
@@ -38,6 +39,8 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
       fiberTag = SUSPENSECOMPONENT;
     } else if (element?.type?.$$typeof === window.reactLazyType) {
       fiberTag = LAZYCOMPONENT;
+    } else if (element?.$$typeof === window.reactPortalType) {
+      fiberTag = PORTAlCOMPONENT;
     } else {
       fiberTag = HOSTCOMPONENT;
     }
@@ -87,7 +90,7 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
     newFiber.pendingProps = getPropsByElement(element),
-      newFiber.memoizedProps = alternateFiber.memoizedProps;
+    newFiber.memoizedProps = alternateFiber.memoizedProps;
     newFiber.ref = (element as MyReactElement)?.ref;
     newFiber.index = alternateFiber.index;
     newFiber.lanes = alternateFiber.lanes;
@@ -141,6 +144,11 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
   //   console.error(getCommitEffectListId(newFiber), _.cloneDeep(newFiber))
   // }
   // console.warn('createFiber', _.cloneDeep({ newFiber }))
+
+  // if (fiberTag === PORTAlCOMPONENT) {
+  //   console.log(newFiber);
+  // }
+
   return newFiber;
 }
 

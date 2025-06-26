@@ -80,6 +80,8 @@ export const SUSPENSECOMPONENT = 0b0000100000000;
 
 export const LAZYCOMPONENT = 0b0001000000000;
 
+export const PORTAlCOMPONENT = 0b0010000000000;
+
 
 // let globalContextFlags: number = NOCONTEXT;
 

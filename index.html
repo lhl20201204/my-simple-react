@@ -66,6 +66,7 @@
       window.reactContextType = Symbol('react.context');
       window.reactSuspenseType = Symbol('react.suspense');
       window.reactLazyType = Symbol('react.lazy')
+      window.reactPortalType = Symbol('react.portal');
       // console.log(window)
       window.promiseResolve()
     } else {
@@ -107,6 +108,7 @@
   window.reactProviderType = context.Provider.$$typeof;
   const innerDom = <div></div>;
   window.reactType = innerDom.$$typeof;
+
   const App3 = window.React.forwardRef(() => <div></div>);
   window.reactForwardRefType = App3.$$typeof;
   const App2 = window.React.memo(App3);
@@ -123,6 +125,9 @@
   window.reactLazyType = dom4.$$typeof;
   window.reactSuspenseType = React.Suspense;
 
+  const dom5 = window.ReactDOM.createPortal(dom3, document.getElementById('app-modal'))
+  window.reactPortalType = dom5.$$typeof;
+
   console.log(
   React,
   React.Suspense,
@@ -134,7 +139,7 @@
     }
   }),
    <React.Suspense />
-  , window.ReactDOM.createPortal(dom3, document.getElementById('app-modal')));
+  , dom5);
   console.log(window.reactType,window.reactContextType, window.reactProviderType,  App2, <App2 />, dom3,
   <React.Fragment><div></div><div></div></React.Fragment>,
   );
@@ -253,6 +258,15 @@
     #view {
       border: 1px solid gray;
       margin-top: 20px;
+    }
+
+    .modal{
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border: 1px solid black;
+      padding: 20px;
     }
   </style>
 </body>

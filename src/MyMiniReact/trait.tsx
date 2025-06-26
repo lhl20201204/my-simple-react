@@ -1,4 +1,4 @@
-import { MyForwardRefComponent, MyFunctionComponent, MyFunctionComponentProps, MyLazyComponent, MyMemoComponent, MyReactNode } from "./type";
+import { MyForwardRefComponent, MyFunctionComponent, MyFunctionComponentProps, MyLazyComponent, MyMemoComponent, MyPortalElement, MyReactNode } from "./type";
 
 export function MyMemo<G extends MyFunctionComponent ,T extends MyFunctionComponent | MyForwardRefComponent<
 G>>(Comp: T, 
@@ -86,3 +86,12 @@ export function MyLazy<T extends MyFunctionComponent>(init: () => Promise<{ defa
   } as MyLazyComponent<T>
 }
 
+export function MyCreatePortal(children: MyReactNode, containerInfo: HTMLElement, key: string | number | null = null): MyPortalElement {
+  return {
+    $$typeof: window.reactPortalType,
+    key,
+    children,
+    containerInfo,
+    implementation: null
+  }
+}

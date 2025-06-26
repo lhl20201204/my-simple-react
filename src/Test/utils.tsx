@@ -7,7 +7,7 @@ import { MyUseEffect,  MyUseRef, MyUseState ,
 } from '../MyMiniReact/beginWork';
 import { promiseResolve, getGlobalPromise, resetGlobalPromise, originConsoleLog } from '../MyMiniReact/test';
 import { runInBatchUpdate } from '../MyMiniReact/ReactDom';
-import {MyForwardRef, MyLazy, MyMemo, MySuspense} from '../MyMiniReact/trait';
+import {MyCreatePortal, MyForwardRef, MyLazy, MyMemo, MySuspense} from '../MyMiniReact/trait';
 import { originSetTimeout, runInRecordLog } from '../MyMiniReact/test';
 import { MyCreateContext } from '../MyMiniReact/context';
 import _ from 'lodash';
@@ -135,6 +135,10 @@ export const lazy: typeof MyLazy =  (fn) => {
     };
   }) as typeof fn);
 };
+
+export const createPortal: typeof MyCreatePortal =
+ window.useSelfReact ? MyCreatePortal :
+ window.ReactDOM.createPortal;
 
 export function sleep(t) {
   let time = Number(new Date());

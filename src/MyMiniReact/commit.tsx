@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getIsFlushEffecting, getPendingUpdateFiberList, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_FLAGS, MyReactFiberKey, NO_CONTEXT, NOEFFECT, NOLANE, PASSIVE_FLAGS, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { IEffectHook, MyFiber, MyReactElement, MyStateNode } from "./type";
-import { isHostComponent, updateDom } from "./dom";
+import { isHostComponent, isPortalComponent, updateDom } from "./dom";
 import { logEffectType, logFiberTree } from "./utils";
 import { reRender, runInBatchUpdate } from "./ReactDom";
 import { originConsoleLog, untrackFiber } from "./test";
@@ -37,12 +37,15 @@ export function disconnectElementAndFiber(fiber: MyFiber) {
 
 function commitDelete(fiber: MyFiber) {
   if (!fiber) return;
-  // console.log('删除', _.cloneDeep(fiber))
   // let f = fiber.child;
   // while (f) {
   //   commitDelete(f);
   //   f = f.sibling;
   // }
+  if (isPortalComponent(fiber)) {
+    return;
+  }
+
   const parentDom: MyStateNode | null = getParentStateNode(fiber)
   const childDom: MyStateNode | null = getStateNode(fiber);
   if (parentDom && childDom) {
@@ -96,7 +99,12 @@ function commitPlacement(fiber: MyFiber) {
   if (!fiber) {
     throw new Error('运行时出错')
   }
-  const parentDom: MyStateNode | null = getParentStateNode(fiber);
+
+  if (isPortalComponent(fiber)) {
+    return;
+  }
+
+  const parentDom: MyStateNode | null =  getParentStateNode(fiber);
   if (parentDom) {
     // console.log(parentDom, 'appendChild', fiber.stateNode)
     // const index = fiber.index;
@@ -104,6 +112,7 @@ function commitPlacement(fiber: MyFiber) {
       fiber.index
     );
     const currentDom = getStateNode(fiber);
+    // console.log('dom', { fiber, parentDom, currentDom, insertDom})
     if (!currentDom) {
       throw new Error('运行时出错')
     }

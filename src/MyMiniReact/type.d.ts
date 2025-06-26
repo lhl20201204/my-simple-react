@@ -77,9 +77,20 @@ export type MyElement<T extends MyElementType, P extends MyProps, K extends MyEl
   _store: { validated: false }
 };
 
+export type MyPortalElement = {
+  $$typeof: Symbol;
+  type?: Symbol;
+  props?: MyProps
+  children: MyReactNode;
+  containerInfo: HTMLElement;
+  key: null | string | number;
+  implementation: null;
+}
+
 export type MyReactElement = MyElement<MyElementType, MyProps, MyElmemetKey>;
 
-export type MySingleReactNode = MyReactElement | string | number | boolean | null | undefined;
+export type MySingleReactNode = MyReactElement |
+ MyPortalElement | string | number | boolean | null | undefined;
 
 export type MyReactNode = MySingleReactNode | MySingleReactNode[];
 

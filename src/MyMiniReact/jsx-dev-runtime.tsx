@@ -16,6 +16,7 @@ declare global {
     reactProviderType: Symbol;
     reactSuspenseType: Symbol;
     reactLazyType: Symbol;
+    reactPortalType: Symbol;
   }
 
   type CustomCSSProperties ={
