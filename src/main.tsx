@@ -6,5 +6,5 @@ window.promiseResolve2();
 
 if (window.useSelfReact) {
         ReactDOM.createRoot(document.getElementById('app') as HTMLElement)
-        .render(window.WindomDom)
+                .render(window.WindomDom)
 }

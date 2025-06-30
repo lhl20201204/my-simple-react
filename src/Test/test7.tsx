@@ -15,7 +15,7 @@ const Post = forwardRef((props, ref) => {
 
   return (
     <div ref={(f) => {
-      console.log('div', count,[f])
+      console.log('div', count, [f])
     }}>
       <button onClick={() => setCount(c => c + 1)}>
         increment
@@ -25,19 +25,19 @@ const Post = forwardRef((props, ref) => {
 });
 
 function App() {
-  const [ bol, setBol] = useState(true);
+  const [bol, setBol] = useState(true);
   return (
     bol ?
-    <Post ref={instance => {
-      console.log('ref callback called with:', instance);
-      if (instance && instance.value > 3) {
-        setBol(false)
-      }
-    }} /> : 'unmount'
+      <Post ref={instance => {
+        console.log('ref callback called with:', instance);
+        if (instance && instance.value > 3) {
+          setBol(false)
+        }
+      }} /> : 'unmount'
   );
 }
 
- const dom1 = <App />
+const dom1 = <App />
 
- export default dom1;
+export default dom1;
 

@@ -1,5 +1,6 @@
-import { MyUseEffect,  MyUseRef, MyUseState ,
-   MyUseCallback,
+import {
+  MyUseEffect, MyUseRef, MyUseState,
+  MyUseCallback,
   MyUseMemo,
   MyUseLayoutEffect,
   MyUseImperativeHandle,
@@ -7,10 +8,11 @@ import { MyUseEffect,  MyUseRef, MyUseState ,
 } from '../MyMiniReact/beginWork';
 import { promiseResolve, getGlobalPromise, resetGlobalPromise, originConsoleLog } from '../MyMiniReact/test';
 import { runInBatchUpdate } from '../MyMiniReact/ReactDom';
-import {MyCreatePortal, MyForwardRef, MyLazy, MyMemo, MySuspense} from '../MyMiniReact/trait';
+import { MyCreatePortal, MyForwardRef, MyLazy, MyMemo, MySuspense } from '../MyMiniReact/trait';
 import { originSetTimeout, runInRecordLog } from '../MyMiniReact/test';
 import { MyCreateContext } from '../MyMiniReact/context';
 import _ from 'lodash';
+import MyClassComponent from '../MyMiniReact/classComponent';
 
 export const useEffect: typeof MyUseEffect = (create, arr) => {
   return (window.useSelfReact ? MyUseEffect : window.React.useEffect)(() => {
@@ -30,7 +32,7 @@ export const useEffect: typeof MyUseEffect = (create, arr) => {
 export const useRef: typeof MyUseRef = window.useSelfReact ? MyUseRef : window.React.useRef;
 export const useCallback: typeof MyUseCallback = window.useSelfReact ? MyUseCallback : window.React.useCallback;
 export const useState: typeof MyUseState = function (...args) {
-  const [ret, setState] = ( window.useSelfReact ? MyUseState : window.React.useState)(...args);
+  const [ret, setState] = (window.useSelfReact ? MyUseState : window.React.useState)(...args);
   return [ret, useCallback((...args) => {
     setState(...args);
     if (!getGlobalPromise()) {
@@ -39,8 +41,8 @@ export const useState: typeof MyUseState = function (...args) {
   }, [])]
 };
 export const useMemo: typeof MyUseMemo = window.useSelfReact ? MyUseMemo : window.React.useMemo;
-export const useLayoutEffect: typeof MyUseLayoutEffect  = (create, arr) => {
-  return (window.useSelfReact ? MyUseLayoutEffect: window.React.useLayoutEffect)(() => {
+export const useLayoutEffect: typeof MyUseLayoutEffect = (create, arr) => {
+  return (window.useSelfReact ? MyUseLayoutEffect : window.React.useLayoutEffect)(() => {
     return runInRecordLog(() => {
       const ret = create();
       return () => {
@@ -52,26 +54,26 @@ export const useLayoutEffect: typeof MyUseLayoutEffect  = (create, arr) => {
   }, arr);
 };
 
-export const  ReactDOM = {
+export const ReactDOM = {
   unstable_batchedUpdates: window.useSelfReact ? function <T>(cb: () => T): T {
     return runInBatchUpdate(cb, false);
-  }: window.ReactDOM.unstable_batchedUpdates
+  } : window.ReactDOM.unstable_batchedUpdates
 }
 
 export const memo: typeof MyMemo = (Comp) => (window.useSelfReact ? MyMemo : window.React.memo)(
   _.isFunction(Comp) ? (props) => {
-      return runInRecordLog(() => {
-          return Comp(props)
-        })
-    } : Comp
+    return runInRecordLog(() => {
+      return Comp(props)
+    })
+  } : Comp
 )
 
-export const forwardRef: typeof MyForwardRef =(Comp) => (window.useSelfReact ? MyForwardRef : window.React.forwardRef)(
+export const forwardRef: typeof MyForwardRef = (Comp) => (window.useSelfReact ? MyForwardRef : window.React.forwardRef)(
   (props, ref) => {
-      return runInRecordLog(() => {
-          return Comp(props, ref)
-        })
-    }
+    return runInRecordLog(() => {
+      return Comp(props, ref)
+    })
+  }
 );
 
 export const useImperativeHandle: typeof MyUseImperativeHandle = (ref, handle, deps) => {
@@ -82,11 +84,11 @@ export const useImperativeHandle: typeof MyUseImperativeHandle = (ref, handle, d
   )
 }
 
-export const createContext: typeof MyCreateContext = window.useSelfReact ? MyCreateContext :  window.React.createContext;
+export const createContext: typeof MyCreateContext = window.useSelfReact ? MyCreateContext : window.React.createContext;
 
 export const useContext: typeof MyUseContext = window.useSelfReact ?
- MyUseContext 
- : window.React.useContext;
+  MyUseContext
+  : window.React.useContext;
 
 const weakMap = new WeakMap();
 
@@ -120,9 +122,9 @@ export const ReactUse = (promise: Promise<any>) => {
 
 export const use = ReactUse;
 
-export const Suspense: typeof MySuspense = window.useSelfReact ? MySuspense :  window.React.Suspense;
+export const Suspense: typeof MySuspense = window.useSelfReact ? MySuspense : window.React.Suspense;
 
-export const lazy: typeof MyLazy =  (fn) => {
+export const lazy: typeof MyLazy = (fn) => {
   return (window.useSelfReact ? MyLazy : window.React.lazy)((async () => {
     const res = await fn();
     console.log('resolve')
@@ -137,12 +139,22 @@ export const lazy: typeof MyLazy =  (fn) => {
 };
 
 export const createPortal: typeof MyCreatePortal =
- window.useSelfReact ? MyCreatePortal :
- window.ReactDOM.createPortal;
+  window.useSelfReact ? MyCreatePortal :
+    window.ReactDOM.createPortal;
 
 export function sleep(t) {
   let time = Number(new Date());
-  while(Number(new Date()) < t + time) {
+  while (Number(new Date()) < t + time) {
 
   }
 }
+
+export const Component: typeof MyClassComponent =
+  window.useSelfReact ?
+    MyClassComponent : window.React.Component
+
+const React = {
+  Component
+}
+
+export default React

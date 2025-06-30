@@ -52,10 +52,10 @@ const Parent = (props: { children: any }) => {
   const dom = useMemo(() => {
     return state % 3 < 1 ? <Middle base={3} key={'GROUP2'} /> : null;
   }, [state % 3 < 1])
-  
+
   console.log('render---Parent', state)
   const refCb = useCallback((x) => {
-     console.log('parent-ref',[x])
+    console.log('parent-ref', [x])
   }, [])
 
   return <div id="parent" ref={refCb} style={{
@@ -63,7 +63,7 @@ const Parent = (props: { children: any }) => {
     padding: '10px',
     margin: '10px'
   }}>Parent--{state}
-    <button  key={"button"} onClick={() => setState(state + 1)}>setState</button>
+    <button key={"button"} onClick={() => setState(state + 1)}>setState</button>
     {props.children}
     {dom}
   </div>;
@@ -86,9 +86,9 @@ const Child = (props: { name: string }) => {
 
   const obj = {
     [props.name]: function () {
-      console.log(props.name +'-useEffect-state-create', state)
+      console.log(props.name + '-useEffect-state-create', state)
       return () => {
-        console.log(props.name +'-useEffect-state-destroy', state)
+        console.log(props.name + '-useEffect-state-destroy', state)
       }
     }
   }
@@ -106,14 +106,14 @@ const Child = (props: { name: string }) => {
 
   console.log('Child', props.name, state);
   return <div
-      id={props.name}
-     style={{ border: '1px solid red', padding: '10px', marginBottom: '20px' }}
-     ref={(x) => {
+    id={props.name}
+    style={{ border: '1px solid red', padding: '10px', marginBottom: '20px' }}
+    ref={(x) => {
       console.log('ref-child', props.name, state, [x])
-     }}
-     >
+    }}
+  >
     <div>{props.name}Child--{state}
-      <button  key={props.name + '_btn'} onClick={() => {
+      <button key={props.name + '_btn'} onClick={() => {
         setState(state + 1)
       }}>setState</button>
     </div>
@@ -122,11 +122,11 @@ const Child = (props: { name: string }) => {
 const MemoChild = memo(Child);
 
 
-const dom =  <div>
+const dom = <div>
   <Parent key={'Parent'}>
     <Child name="1" key={"1"} />
     <Child name="2" key={"2"} />
-    <Child name="3"  key={"3"}/>
+    <Child name="3" key={"3"} />
   </Parent>
   <Middle base={0} key={'GROUP1'} />
 </div>

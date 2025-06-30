@@ -89,7 +89,7 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
 
   if (alternateFiber) {
     newFiber.alternate = alternateFiber;
-    newFiber.pendingProps = getPropsByElement(element),
+    newFiber.pendingProps = getPropsByElement(element);
     newFiber.memoizedProps = alternateFiber.memoizedProps;
     newFiber.ref = (element as MyReactElement)?.ref;
     newFiber.index = alternateFiber.index;
@@ -253,10 +253,10 @@ export function clearFiber(fiber: MyFiber) {
   fiber.alternate = null;
 }
 
-export function getAllChildrenFiber(fiber: MyFiber, count = 0): MyFiber[]  {
+export function getAllChildrenFiber(fiber: MyFiber, count = 0): MyFiber[] {
   const ret: MyFiber[] = [];
   if (count > 0) {
-     ret.push(fiber)
+    ret.push(fiber)
   }
   let f = fiber.child;
   while (f) {
@@ -270,10 +270,10 @@ export function dfsClearFiber(fiber: MyFiber) {
   const list = getAllChildrenFiber(fiber);
   const list2 = fiber.alternate ? getAllChildrenFiber(fiber.alternate) : [];
   // console.log(_.cloneDeep([...list, ...list2]))
-  for(const f of list) {
+  for (const f of list) {
     clearFiber(f)
   }
-  for(const f of list2) {
+  for (const f of list2) {
     clearFiber(f)
   }
 }

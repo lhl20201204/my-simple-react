@@ -1,3 +1,4 @@
+import MyClassComponent from "./classComponent";
 import { DELETE, PLACEMENT, UPDATE } from "./const";
 
 export type MyProps = {
@@ -24,11 +25,11 @@ export type MyForwardRefComponent<T extends MyFunctionComponent> = {
 }
 
 export type MyLazyPayload<T> = {
-    _status: -1;
-    _result: () => Promise<{ default: T}>
+  _status: -1;
+  _result: () => Promise<{ default: T }>
 } | {
   _status: 0;
-  _result:Promise<{ default: T}>;
+  _result: Promise<{ default: T }>;
 } | {
   _status: 1;
   _result: T;
@@ -37,10 +38,10 @@ export type MyLazyPayload<T> = {
   _result: Error
 }
 
-export type MyLazyInitializer<T extends MyFunctionComponent> = (payload: MyLazyPayload<T>) => 
-    Error<Promise<{ default: T}>>
-   | { default: T}
-   | never
+export type MyLazyInitializer<T extends MyFunctionComponent> = (payload: MyLazyPayload<T>) =>
+  Error<Promise<{ default: T }>>
+  | { default: T }
+  | never
 
 export type MyLazyComponent<T extends MyFunctionComponent> = {
   $$typeof: Symbol;
@@ -49,8 +50,8 @@ export type MyLazyComponent<T extends MyFunctionComponent> = {
   (props: MyFunctionComponentProps<T>): ReturnType<T>;
 }
 
-export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyReactNode ? f : 
-T extends MyForwardRefComponent<infer Y> ? MyFunctionComponentProps<Y> : never;
+export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyReactNode ? f :
+  T extends MyForwardRefComponent<infer Y> ? MyFunctionComponentProps<Y> : never;
 
 export type MyMemoComponent<T extends MyFunctionComponent | MyForwardRefComponent> = {
   $$typeof: Symbol;
@@ -59,11 +60,9 @@ export type MyMemoComponent<T extends MyFunctionComponent | MyForwardRefComponen
   (props: MyFunctionComponentProps<T>): MyReactNode;
 }
 
-export type MyClassComponent = new (props: MyProps, context: any) => MyReactNode;
-
 export type MyElementType = 'root' | keyof HTMLElementTagNameMap
- | MyFunctionComponent | MyClassComponent | MyMemoComponent
-| Symbol;
+  | MyFunctionComponent | typeof MyClassComponent | MyMemoComponent
+  | Symbol;
 
 export type MyElmemetKey = string | number | null | undefined
 export type MyElement<T extends MyElementType, P extends MyProps, K extends MyElmemetKey> = {
@@ -90,7 +89,7 @@ export type MyPortalElement = {
 export type MyReactElement = MyElement<MyElementType, MyProps, MyElmemetKey>;
 
 export type MySingleReactNode = MyReactElement |
- MyPortalElement | string | number | boolean | null | undefined;
+  MyPortalElement | string | number | boolean | null | undefined;
 
 export type MyReactNode = MySingleReactNode | MySingleReactNode[];
 
@@ -110,7 +109,7 @@ export type MyContext<T> = {
   $$typeof: Symbol;
   Provider: {
     $$typeof: Symbol;
-    _context: MyContext<T> 
+    _context: MyContext<T>
     (props: { children?: MyReactNode, value: T }): MyReactNode;
   }
   Consumer: {

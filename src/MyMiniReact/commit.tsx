@@ -104,7 +104,7 @@ function commitPlacement(fiber: MyFiber) {
     return;
   }
 
-  const parentDom: MyStateNode | null =  getParentStateNode(fiber);
+  const parentDom: MyStateNode | null = getParentStateNode(fiber);
   if (parentDom) {
     // console.log(parentDom, 'appendChild', fiber.stateNode)
     // const index = fiber.index;

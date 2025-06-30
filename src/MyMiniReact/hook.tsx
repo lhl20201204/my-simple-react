@@ -254,8 +254,8 @@ export function MyUseContext<T>(context: MyContext<T>): T {
       f = f.next;
     }
 
-    if (f.context !== context) {
-      return undefined;
+    if (!f || f.context !== context) {
+      return context._currentValue;
     }
     return f.memoizedValue as T;
   }

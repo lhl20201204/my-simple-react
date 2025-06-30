@@ -33,17 +33,17 @@ const childSign = getUUID('@@child');
 
 declare namespace React {
   type Dispatch<T> = (x: T) => void;
-  type  SetStateAction<T> = T | ((_x: T) => T)
+  type SetStateAction<T> = T | ((_x: T) => T)
 }
 
 export function payloadChildState(eventName: string, value: any) {
- const totalEventName = eventName + childSign
- emitter.emit(totalEventName, value)
+  const totalEventName = eventName + childSign
+  emitter.emit(totalEventName, value)
 }
 
 export function payloadParentState(eventName: string, value: any) {
- const totalEventName = eventName + parentSign
- emitter.emit(totalEventName, value)
+  const totalEventName = eventName + parentSign
+  emitter.emit(totalEventName, value)
 }
 
 export function useParentState<T>(eventName: string, initialState: T):
@@ -61,18 +61,18 @@ export function useParentState<T>(eventName: string, initialState: T):
   const setState = useCallback((value: T | ((x: T) => T)) => {
     const totalEventName = eventName + (childSign);
     ReactDOM.unstable_batchedUpdates(() => {
-    if (_.isFunction(value)) {
-      setInnerState((x) => {
-        const ret = value(x);
-        map.set(eventName, ret);
-        emitter.emit(totalEventName, ret);
-        return ret;
-      });
-    } else {
-      setInnerState(value);
-      map.set(eventName, value);
-      emitter.emit(totalEventName, value);
-    }
+      if (_.isFunction(value)) {
+        setInnerState((x) => {
+          const ret = value(x);
+          map.set(eventName, ret);
+          emitter.emit(totalEventName, ret);
+          return ret;
+        });
+      } else {
+        setInnerState(value);
+        map.set(eventName, value);
+        emitter.emit(totalEventName, value);
+      }
     })
   }, [])
 
@@ -88,7 +88,7 @@ export function useParentState<T>(eventName: string, initialState: T):
   return [state, setState, setInnerState];
 }
 
-export function useChildState<T>(eventName: string, debuggerFnName?: string): [T, 
+export function useChildState<T>(eventName: string, debuggerFnName?: string): [T,
   React.Dispatch<React.SetStateAction<T>>,
   React.Dispatch<React.SetStateAction<T>>] {
   const [state, setInnerState] = useState<T>(map.get(eventName) as T);

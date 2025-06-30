@@ -22,13 +22,13 @@ export function sumbitEffect(fiber: MyFiber) {
   const hadLayoutEffectBol = (fiber.flags & LAYOUT_FLAGS);
   const deleteBol = (fiber.flags & DELETE);
 
- 
+
   // if (deleteBol) {
   //   fiber.flags |=  LAYOUT_FLAGS
   // }
 
   if ((hasEffectBol || hadLayoutEffectBol || deleteBol) && (fiber.tag !== ROOTCOMPONENT)) {
-    const parentFiber =  getRootFiber(fiber);
+    const parentFiber = getRootFiber(fiber);
     // 递归上传effect
     let f = fiber.updateQueue.firstEffect;
     if (fiber.updateQueue.lastEffect) {
@@ -47,7 +47,7 @@ export function sumbitEffect(fiber: MyFiber) {
       // if (f.id === 9) {
       //   console.warn(_.cloneDeep({ f, deps: [[...f.deps], [...f.pendingDeps ?? []]], isSame }))
       // }
-      
+
       if (!isSame) {
         f.tag |= EFFECT_HOOK_HAS_EFFECT;
         f.deps = f.pendingDeps;
@@ -64,7 +64,7 @@ export function sumbitEffect(fiber: MyFiber) {
       if (deleteBol) {
         f.tag |= EFFECT_DESTROY | EFFECT_HOOK_HAS_EFFECT;
         if (f.tag & EFFECT_LAYOUT) {
-          fiber.flags |=  LAYOUT_FLAGS;
+          fiber.flags |= LAYOUT_FLAGS;
         }
       };
 
@@ -98,7 +98,7 @@ export function sumbitEffect(fiber: MyFiber) {
     // if (!deleteBol) {
     //  resetEffectQueue(fiber)
     // }
-  
+
     if (deleteBol && (fiber.ref) && isHostComponent(fiber)) {
       fiber.flags |= REFEFFECT;
     }
@@ -108,14 +108,14 @@ export function sumbitEffect(fiber: MyFiber) {
     if (hasEffectBol) {
       fiber.flags &= ~PASSIVE_FLAGS
     }
-  } 
+  }
 }
 
 export function completeWork(fiber: MyFiber) {
   if (fiber.memoizedProps !== fiber.pendingProps) {
     console.error('-------->', _.cloneDeep({ fiber }))
   }
-  fiber.commitCount ++;
+  fiber.commitCount++;
   if (fiber && isHostComponent(fiber) && !fiber.stateNode) {
     createDom(fiber);
   }

@@ -25,6 +25,7 @@ function App() {
         使用 portal 展示模态（motal）
       </button>
       {showModal && dom}
+      <div id="test12">test12</div>
     </>
   );
 }

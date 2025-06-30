@@ -1,16 +1,16 @@
 import { useState } from "./utils";
 
- function App() {
+function App() {
   const [isFancy, setIsFancy] = useState(false);
   console.log('render-isFancy', isFancy)
   return (
     <div style={{
       padding: 40
-   }}>
+    }}>
       {isFancy ? (
-        <Counter isFancy={true} /> 
+        <Counter isFancy={true} />
       ) : (
-        <Counter isFancy={false} /> 
+        <Counter isFancy={false} />
       )}
       <label>
         <input
@@ -52,7 +52,7 @@ function Counter({ isFancy }) {
         console.log('enter')
         setHover(true)
       }}
-      onMouseLeave={() =>{ 
+      onMouseLeave={() => {
         console.log('leave')
         setHover(false)
       }}
@@ -64,7 +64,7 @@ function Counter({ isFancy }) {
     </div>
   );
 }
- 
- const dom1 = <App />
 
- export default dom1;
+const dom1 = <App />
+
+export default dom1;

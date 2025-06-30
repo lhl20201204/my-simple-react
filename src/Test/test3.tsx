@@ -220,6 +220,6 @@ function App() {
   </div>
 }
 
-const dom = <App key={'test3'}/>
+const dom = <App key={'test3'} />
 
 export default dom;

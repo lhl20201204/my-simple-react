@@ -14,9 +14,9 @@ const Parent = (props: { children?: any }) => {
 
   function parentEffect() {
     console.log(state, 'Parent-useEffect')
-      return () => {
-       console.log(state, 'Parent-useEffect-destroy');
-     }
+    return () => {
+      console.log(state, 'Parent-useEffect-destroy');
+    }
   }
 
   useEffect(parentEffect, [state])
@@ -30,7 +30,7 @@ const Parent = (props: { children?: any }) => {
   //       return 10;
   //     })
   //   }
-    
+
   // }
 
   // sleep(1000)
@@ -38,25 +38,25 @@ const Parent = (props: { children?: any }) => {
 
   const cb = useCallback(() => {
     // ReactDOM.unstable_batchedUpdates(() => {
-      console.error('step1')
-      setState((c) => c + 1)
-      console.error('step2')
-      setState((c) => c + 1)
-      console.error('step3')
-      setState((c) => c + 1)
-      console.error('step4')
+    console.error('step1')
+    setState((c) => c + 1)
+    console.error('step2')
+    setState((c) => c + 1)
+    console.error('step3')
+    setState((c) => c + 1)
+    console.error('step4')
     // })
   }, [])
 
   const cb2 = useCallback(() => {
     // ReactDOM.unstable_batchedUpdates(() => {
-      console.log('step1')
-      setInnerState((c) => c + 1)
-      console.log('step2')
-      setInnerState((c) => c + 1)
-      console.log('step3')
-      setInnerState((c) => c + 1)
-      console.log('step4')
+    console.log('step1')
+    setInnerState((c) => c + 1)
+    console.log('step2')
+    setInnerState((c) => c + 1)
+    console.log('step3')
+    setInnerState((c) => c + 1)
+    console.log('step4')
     // })
   }, [])
 
@@ -70,10 +70,10 @@ const Parent = (props: { children?: any }) => {
   const dom = useMemo(() => {
     return state % 3 < 1 ? <Middle base={3} key={'GROUP2'} /> : null;
   }, [state % 3 < 1])
-  
+
   console.log('render---Parent', state)
   const refCb = useCallback((x) => {
-     console.log([x])
+    console.log([x])
   }, [])
 
   return <div ref={refCb} style={{
@@ -81,7 +81,7 @@ const Parent = (props: { children?: any }) => {
     padding: '10px',
     margin: '10px'
   }}>Parent--{state}
-    <button  key={"button"} onClick={() => setState(state + 1)}>setState</button>
+    <button key={"button"} onClick={() => setState(state + 1)}>setState</button>
     {props.children}
     {dom}
   </div>;
@@ -103,9 +103,9 @@ const Child = (props: { name: string }) => {
 
   const obj = {
     [props.name]: function () {
-      console.log(props.name +'-useEffect-state-create', state)
+      console.log(props.name + '-useEffect-state-create', state)
       return () => {
-        console.log(props.name +'-useEffect-state-destroy', state)
+        console.log(props.name + '-useEffect-state-destroy', state)
       }
     }
   }
@@ -120,10 +120,10 @@ const Child = (props: { name: string }) => {
 
   console.log('Child', props.name, state);
   return <div
-      id={props.name}
-     style={{ border: '1px solid red', padding: '10px', marginBottom: '20px' }}>
+    id={props.name}
+    style={{ border: '1px solid red', padding: '10px', marginBottom: '20px' }}>
     <div>{props.name}Child--{state}
-      <button  key={props.name + '_btn'} onClick={() => {
+      <button key={props.name + '_btn'} onClick={() => {
         setState(state + 1)
 
       }}>setState</button>
@@ -131,13 +131,13 @@ const Child = (props: { name: string }) => {
   </div>;
 }
 
-const dom =  <div>
+const dom = <div>
   <Parent key={'Parent'}>
-  <Child name="-2" key={"-2"} />
+    <Child name="-2" key={"-2"} />
     <Child name="-1" key={"-1"} />
     <Child name="1" key={"1"} />
     <Child name="2" key={"2"} />
-    <Child name="3"  key={"3"}/>
+    <Child name="3" key={"3"} />
   </Parent>
   <Middle base={0} key={'GROUP1'} />
 </div>

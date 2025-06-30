@@ -19,72 +19,74 @@ declare global {
     reactPortalType: Symbol;
   }
 
-  type CustomCSSProperties ={
+  type CustomCSSProperties = {
     [key in keyof CSSStyleDeclaration]?: CanBeNumber<key, CSSStyleDeclaration[key]>;
     // ...你想要的属性
   }
 
   type GetLast<T> = ((
-    T extends any ? 
+    T extends any ?
     ((x: (x: T) => void) => void) extends (x: infer f) => void ?
-    (x: f) => void : never 
+    (x: f) => void : never
     : never
-  ) extends ((x: infer f) => void) ? 
-  f : never) extends ((t: infer ff) => void) ? ff : never;
+  ) extends ((x: infer f) => void) ?
+    f : never) extends ((t: infer ff) => void) ? ff : never;
 
 
   // 常用 HTML 标签数组
-type CommonHTMLTags = [
-  // 布局容器
-  'div',      // 通用容器
-  'section',  // 章节/区段
-  'article',  // 文章
-  'header',   // 页头
-  'footer',   // 页脚
-  'main',     // 主要内容
-  'nav',      // 导航
-  'aside',    // 侧边栏
+  type CommonHTMLTags = [
+    // 布局容器
+    'div',      // 通用容器
+    'section',  // 章节/区段
+    'article',  // 文章
+    'header',   // 页头
+    'footer',   // 页脚
+    'main',     // 主要内容
+    'nav',      // 导航
+    'aside',    // 侧边栏
 
-  // 文本
-  'p',        // 段落
-  'span',     // 行内文本
-  'h1',       // 一级标题
-  'h2',       // 二级标题
-  'h3',       // 三级标题
-  'h4',       // 四级标题
-  'h5',       // 五级标题
-  'h6',       // 六级标题
+    // 文本
+    'p',        // 段落
+    'span',     // 行内文本
+    'h1',       // 一级标题
+    'h2',       // 二级标题
+    'h3',       // 三级标题
+    'h4',       // 四级标题
+    'h5',       // 五级标题
+    'h6',       // 六级标题
 
-  // 列表
-  'ul',       // 无序列表
-  'ol',       // 有序列表
-  'li',       // 列表项
+    // 列表
+    'ul',       // 无序列表
+    'ol',       // 有序列表
+    'li',       // 列表项
 
-  // 表单
-  'form',     // 表单
-  'input',    // 输入框
-  'button',   // 按钮
-  'select',   // 下拉选择
-  'option',   // 下拉选项
-  'textarea', // 文本域
-  'label',    // 标签
+    'strong',
 
-  // 图片和多媒体
-  'img',      // 图片
-  'video',    // 视频
-  'audio',    // 音频
+    // 表单
+    'form',     // 表单
+    'input',    // 输入框
+    'button',   // 按钮
+    'select',   // 下拉选择
+    'option',   // 下拉选项
+    'textarea', // 文本域
+    'label',    // 标签
 
-  // 链接
-  'a',        // 超链接
+    // 图片和多媒体
+    'img',      // 图片
+    'video',    // 视频
+    'audio',    // 音频
 
-  // 表格
-  'table',    // 表格
-  'thead',    // 表头
-  'tbody',    // 表格主体
-  'tr',       // 表格行
-  'th',       // 表头单元格
-  'td'        // 表格单元格
-];
+    // 链接
+    'a',        // 超链接
+
+    // 表格
+    'table',    // 表格
+    'thead',    // 表头
+    'tbody',    // 表格主体
+    'tr',       // 表格行
+    'th',       // 表头单元格
+    'td'        // 表格单元格
+  ];
 
   type ChangeForm = {
     'onclick': 'onClick',
@@ -111,19 +113,19 @@ type CommonHTMLTags = [
 
   type ChangeValue<T, K extends keyof HTMLElementTagNameMap, V> = T extends keyof ChangeForm ? V extends (f: infer f) => infer r ?
     (x: Omit<f, 'target'> & {
-    stopPropagation: () => void
-    preventDefault: () => void
-    target: HTMLElementTagNameMap[K]
-  }) => r: never : CanBeNumber<T, V>;
+      stopPropagation: () => void
+      preventDefault: () => void
+      target: HTMLElementTagNameMap[K]
+    }) => r : never : CanBeNumber<T, V>;
 
 
-  
-  
+
+
   type unionToArray<T, G = GetLast<T>, rest = Exclude<T, G>> = [
     ...([rest] extends [never] ? [] : unionToArray<rest>),
     G & string
   ];
-  
+
   type Generate<T extends readonly string[]> = {
     [K in T[number]]: K extends keyof HTMLElementTagNameMap ? Omit<{
       [P in (keyof HTMLElementTagNameMap[K]) as changeAttrbute<P>]?: ChangeValue<P, K, HTMLElementTagNameMap[K][P]>;
@@ -139,7 +141,7 @@ type CommonHTMLTags = [
 export const globalHocMap = new WeakMap<MyElementType, MyElementType>();
 let pid = 0;
 function transformProps<T extends MyProps>(props: T): T {
-  const ret = { [Symbol('debugger.id')]: pid ++ } as any;
+  const ret = { [Symbol('debugger.id')]: pid++ } as any;
   _.forEach(props, (v, k) => {
     if ((k.startsWith('on') || k === 'children') && _.isFunction(v)) {
       ret[k] = ((...args: []) => {
@@ -164,31 +166,39 @@ function isMemoType(x) {
 
 function getType(x) {
   return _.isFunction(x) ? x :
-  isMemoType(x) ? getType(x.type) : getType(x.render);
+    isMemoType(x) ? getType(x.type) : getType(x.render);
 }
 
 function changeType(type, newFnType) {
   return _.isFunction(type) ? newFnType :
-   isMemoType(type) ?
-   {
-    ...type,
-    type: changeType(type.type, newFnType)
-  } : {
-    ...type,
-    render: changeType(type.render, newFnType)
-  }
+    isMemoType(type) ?
+      {
+        ...type,
+        type: changeType(type.type, newFnType)
+      } : {
+        ...type,
+        render: changeType(type.render, newFnType)
+      }
 }
 
 export function transformRef(ref) {
   return _.isFunction(ref) ? (...args) => runInRecordLog(() => ref(...args)) : ref;
 }
 
-export function jsxDev<T extends MyElementType, 
-P extends MyProps, K extends MyElmemetKey>(
-  type: T, 
-  props: P & (T extends MyFunctionComponent ? MyFunctionComponentProps<P> : MyProps),
-  key: K
-): MyElement<T, P, K> {
+function isClassComponent(type) {
+  return (
+    typeof type === 'function' &&
+    !!type.prototype &&
+    !!type.prototype.isReactComponent
+  );
+}
+
+export function jsxDev<T extends MyElementType,
+  P extends MyProps, K extends MyElmemetKey>(
+    type: T,
+    props: P,
+    key: K
+  ): MyElement<T, P, K> {
 
   // if (props.id === 'test') {
   //   console.trace('test', props)
@@ -199,7 +209,7 @@ P extends MyProps, K extends MyElmemetKey>(
   // const bol = isMemo || isForWardRef
   let fnType = type;
   const originFnType = type;
-  if (_.isFunction(fnType) && !fnType['jump-hoc']) {
+  if (_.isFunction(fnType) && !isClassComponent(fnType) && !fnType['jump-hoc']) {
     // if (!globalHocMap.has(type)) {
     //   globalHocMap.set(type, new Map());
     // }
@@ -222,8 +232,10 @@ P extends MyProps, K extends MyElmemetKey>(
           //   throw new Error('test')
           // }
           return runInRecordLog(() => {
-            // console.error('劫持----->', originFnType)
-            const ret = originFnType(props, ref)
+            // console.error('劫持----->', [originFnType,
+            //   originFnType.prototype?.isReactComponent
+            // ])
+            let ret  = originFnType(props, ref)
             // console.error('<-----劫持', originFnType)
             return ret
           })
@@ -262,3 +274,12 @@ P extends MyProps, K extends MyElmemetKey>(
 export const Fragment = window.reactFragmentType ?? Symbol('React.Fragment')
 
 export const jsxDEV = jsxDev;
+
+export function createElement<
+T extends MyElementType,
+  P extends MyProps>(
+  type:T,
+  props: P
+) {
+  return jsxDev(type, _.omit(props, 'key') as MyProps, _.get(props, 'key'))
+}

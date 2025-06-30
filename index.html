@@ -75,7 +75,7 @@
           type: 'fetch',
           script: () => {
             const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.js"
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"
             return script
           },
         },
@@ -83,7 +83,7 @@
           type: 'fetch',
           script: () => {
             const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.js"
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"
             return script
           },
         },
@@ -205,7 +205,7 @@
             filename: 'babel.js',
             presets: ['typescript', 'react']
           }).code;
-          
+
           // 创建新的脚本元素，使用转译后的代码
           const newScript = document.createElement('script');
           newScript.textContent = transformedCode;
@@ -260,7 +260,7 @@
       margin-top: 20px;
     }
 
-    .modal{
+    .modal {
       position: absolute;
       left: 50%;
       top: 50%;

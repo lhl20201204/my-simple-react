@@ -121,7 +121,7 @@ export async function test3DiffDFS(setState: any, lastArr: string[], count: numb
       test3DiffDFS(setState, expectArr, _.isNumber(count) ? count - 1 : count)
     }, 1000)
   } else {
-    
+
   }
 }
 
@@ -135,19 +135,19 @@ export async function testMemoryLeak(setState: any, lastArr: string[], count: nu
   const base = Math.floor(Math.random() * 20);
   const expectArr = _.isNumber(count) ? new Array(Math.floor(Math.random() * 20) + 1).fill(0).map((c, i) => `${base + i + 1}`).sort(() => Math.random() - 0.5) : count.shift();
   originConsoleLog({ expectArr, count: _.isNumber(count) ? count : [...count] })
-  
+
   // 在更新前记录当前的 fiber 实例数量
   const beforeFiberCount = fiberCount;
   const beforeFiberIds = new Set(fiberIds);
-  
+
   setState(expectArr);
-  
+
   // 使用 Promise 来确保在状态更新后检查
   await getGlobalPromise().then(() => {
     // 在更新后检查 fiber 实例是否被正确清理
     const newFiberIds = Array.from(fiberIds).filter(id => !beforeFiberIds.has(id));
     const removedFiberIds = Array.from(beforeFiberIds).filter(id => !fiberIds.has(id));
-    
+
     console.warn({
       beforeFiberCount,
       afterFiberCount: fiberCount,
@@ -159,7 +159,7 @@ export async function testMemoryLeak(setState: any, lastArr: string[], count: nu
       fiberWeakMap
     });
   });
-  
+
   const dom = document.getElementById('test-diff-dom');
   if (!dom) {
     throw new Error('dom not found')

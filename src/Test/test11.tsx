@@ -2,7 +2,7 @@
 import { Suspense, use, useEffect } from "./utils";
 
 async function fetchData(xx: string) {
-  return new Promise(resolve => setTimeout(() =>resolve(xx), 5000));
+  return new Promise(resolve => setTimeout(() => resolve(xx), 5000));
 }
 
 const p = fetchData('1111').then(res => {
@@ -53,14 +53,14 @@ function App() {
   return (
     <Suspense fallback={<Loading />}>
       <A>
-        <B key={'B'}/>
-        <C key={'C'}/>
+        <B key={'B'} />
+        <C key={'C'} />
       </A>
     </Suspense>
   );
 }
 
-const dom = <App key={'test11'}/>
+const dom = <App key={'test11'} />
 
 export default dom;
 

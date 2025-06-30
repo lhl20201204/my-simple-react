@@ -16,3 +16,11 @@ declare namespace JSX {
   }
 }
 
+declare namespace MyReact {
+  export type PropsWithChildren<P> = P & {
+    children?: MyReactNode
+  }
+  export type ErrorInfo = {
+    componentStack: string;
+  };
+}

@@ -43,10 +43,10 @@ const weakMap = new WeakMap<MyStateNode, Map<string, Function>>();
 
 export function getTopFiber(fiber: MyFiber): HTMLElement | Text {
   let f = fiber;
-  while(f && f.tag !== PORTAlCOMPONENT) {
+  while (f && f.tag !== PORTAlCOMPONENT) {
     f = f.return;
   }
-  return f ? (f.element as MyPortalElement).containerInfo: fiberRoot.stateNode;
+  return f ? (f.element as MyPortalElement).containerInfo : fiberRoot.stateNode;
 }
 
 const topDomIdMap = new WeakMap();
@@ -194,14 +194,14 @@ export function createDom(fiber: MyFiber) {
     return fiber.stateNode;
   }
   if (isHostComponent(fiber)) {
-    const dom = isPortalComponent(fiber) ? 
-      (fiber.element as MyPortalElement).containerInfo 
-     :  document.createElement(
-      [
-        FRAGMENTCOMPONENT,
-        PROVIDERCOMPONENT,
-        SUSPENSECOMPONENT
-      ].includes(fiber.tag) ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
+    const dom = isPortalComponent(fiber) ?
+      (fiber.element as MyPortalElement).containerInfo
+      : document.createElement(
+        [
+          FRAGMENTCOMPONENT,
+          PROVIDERCOMPONENT,
+          SUSPENSECOMPONENT
+        ].includes(fiber.tag) ? 'fragment' : fiber.type as keyof HTMLElementTagNameMap);
     fiber.stateNode = dom;
     // console.log('创建dom', dom);
     updateDom(fiber);
@@ -217,6 +217,7 @@ export function mountChildDom(fiber: MyFiber, dom: HTMLElement) {
   const ret = []
   while (f) {
     if (isPortalComponent(f)) {
+      f = f.sibling;
       continue;
     }
     const childDom = findChildStateNode(f);

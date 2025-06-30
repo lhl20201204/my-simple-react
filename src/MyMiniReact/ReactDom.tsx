@@ -58,7 +58,7 @@ export function reRender(isSync: boolean) {
     } else {
       requestIdleCallback(workLoop);
     }
-  } 
+  }
 }
 
 export function scheduleRootFiber(rootFiber3: MyFiber, isSync: boolean) {

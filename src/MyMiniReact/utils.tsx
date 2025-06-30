@@ -107,8 +107,8 @@ export function logFiberTree(fiber: MyFiber) {
             f.type?.$$typeof === window.reactContextType ? 'react.consumer' :
               f.type === window.reactSuspenseType ? 'react.suspense' :
                 f.type?.$$typeof === window.reactLazyType ? 'react.lazy' :
-                f.tag === PORTAlCOMPONENT ? 'react.portal' :
-                  f.type;
+                  f.tag === PORTAlCOMPONENT ? 'react.portal' :
+                    f.type;
     //  console.log(name)
     if (typeof name === 'function') {
       name = (name as Function).name;

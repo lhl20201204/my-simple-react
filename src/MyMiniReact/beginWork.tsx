@@ -73,6 +73,7 @@ function reconcileChildren(fiber: MyFiber, list: MyReactNode[]) {
     //   oldFiberSibling,
     //   fiber,
     //   isSameType,
+    //   len: children.length,
     //   bol: isSameType && isPropsEqual(getPropsByElement(child), oldFiberSibling.pendingProps, oldFiberSibling)
     // }))
 
@@ -134,7 +135,7 @@ function reconcileChildren(fiber: MyFiber, list: MyReactNode[]) {
       // console.log('原来', oldFiberSibling, child)
       oldFiberSibling.return = fiber;
       dfsSumbitEffect(oldFiberSibling)
-      // console.log('递归删除', _.cloneDeep(oldFiberSibling));
+      // console.log('递归删除', _.cloneDeep({oldFiberSibling, index, len: children.length}));
       if (index < children.length) {
         newFiber = createFiber(child, index, null);
         if (!retFiber) {
@@ -375,7 +376,7 @@ export function handlePromiseError(fiber: MyFiber, e: Error) {
     ensureRootIsScheduled(true);
   })
 
-  
+
 
   suspenseFiber.firstEffect = null;
   suspenseFiber.lastEffect = null;
@@ -384,7 +385,7 @@ export function handlePromiseError(fiber: MyFiber, e: Error) {
   suspenseFiber.updateQueue.lastEffect = null;
   dfsClearFiber(suspenseFiber);
   if (suspenseFiber.alternate) {
-     dfsClearFiber(suspenseFiber.alternate);
+    dfsClearFiber(suspenseFiber.alternate);
   }
   suspenseFiber.child = null;
   // for(const hook of  hookList) {
