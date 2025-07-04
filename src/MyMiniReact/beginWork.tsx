@@ -28,7 +28,11 @@ function getFlags(fiber: MyFiber) {
 }
 
 function canDiff(fiber: MyFiber, child?: MySingleReactNode) {
-  return (_.isObject(child) && fiber.key === child?.key && fiber.type === child?.type) || (isTextComponent(fiber) && isStringOrNumber(child))
+  return (
+    (child as MyPortalElement)?.$$typeof === window.reactPortalType
+    && (child as MyPortalElement)?.key === fiber.key
+  ) ||
+  (_.isObject(child) && fiber.key === child?.key && fiber.type === child?.type) || (isTextComponent(fiber) && isStringOrNumber(child))
 }
 
 function findFiberByKeyAndType(list: MyFiber[], child?: MySingleReactNode) {
@@ -342,6 +346,7 @@ export function notifyChildFiber<T>(fiber: MyFiber, context: MyContext<T>,
         if (c.context === context) {
           c.memoizedValue = newValue;
           setFiberWithFlags(f, UPDATE)
+          // console.log('notifyChildFiber', f, newValue)
           break;
         }
         c = c.next;
@@ -421,10 +426,10 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
     }
   }
 
-  // console.error('beginWork', _.cloneDeep({
-  //   type: logEffectType(fiber),
-  //   id: fiber.id,
-  //   fiber}))
+  console.error('beginWork', _.cloneDeep({
+    type: logEffectType(fiber),
+    id: fiber.id,
+    fiber}))
 
 
   // if (fiber.alternate) {
@@ -452,8 +457,12 @@ export function beginWork(fiber: MyFiber): MyFiber | null {
   }
 
   if (fiber.tag === PROVIDERCOMPONENT) {
+    // console.log('provider-value-change--->', _.cloneDeep(fiber))
     if (fiber.alternate && fiber.pendingProps.value !== fiber.memoizedProps.value) {
       // console.warn(_.cloneDeep({ fiber}))
+    //   console.error('provider-value-change', _.cloneDeep(fiber),
+    //  _.cloneDeep(fiber.pendingProps.value),
+    //  _.cloneDeep(fiber.memoizedProps.value))
       notifyChildFiber(fiber, fiber.elementType._context, fiber.pendingProps.value);
     }
     // resetLaneProps(fiber)

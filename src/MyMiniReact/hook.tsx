@@ -14,26 +14,26 @@ export function findFiberPath(fiber: MyFiber) {
   return ret;
 }
 
-export function findTagFiber(fiber: MyFiber, path: MyFiber[], rootFiber: MyFiber) {
-  // originConsoleLog([...path])
-  let p = rootFiber;
-  while (path.length && p === path[path.length - 1]) {
-    // p = p.child;
-    let c = p.child;
-    let f = p;
-    path.pop();
-    while (c) {
-      if (c === path[path.length - 1]) {
-        p = c;
-      }
-      c = c.sibling;
-    }
-    if (p === f) {
-      break;
-    }
+export function mayBeTargetFiber(f: MyFiber, s: MyFiber) {
+  return f === s || f?.alternate === s;
+}
+
+
+export function findTagFiber(targetFiber: MyFiber, path: MyFiber[], rootFiber: MyFiber): MyFiber | null {
+  if (mayBeTargetFiber(targetFiber, rootFiber)) {
+    return rootFiber;
   }
-  // originConsoleLog(path.length, fiber.alternate, fiber, rootFiber);
-  return path.length ? fiber.alternate : fiber;
+  path.pop();
+  const top = path[path.length - 1];
+  let f = rootFiber.child;
+  while (f) {
+    const ret = mayBeTargetFiber(top, f) ?  findTagFiber(targetFiber, path, f) : null
+    if (ret) {
+      return ret;
+    }
+    f = f.sibling;
+  }
+  return null;
 }
 
 export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) => void] {
@@ -91,6 +91,7 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
 
       if ((_.isFunction(x) || x !== oldValue) && !(currentFiber.flags & UPDATE)) {
         setFiberWithFlags(currentFiber, UPDATE)
+        // console.warn('setFiberWithFlags',wipRoot, rootFiber, findFiberPath(fiber), _.cloneDeep(currentFiber), logFiberIdPath(currentFiber))
       }
 
       if (!getBatchUpdating() && !!(currentFiber.flags & UPDATE)) {

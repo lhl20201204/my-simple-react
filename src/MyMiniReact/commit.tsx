@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getIsFlushEffecting, getPendingUpdateFiberList, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_FLAGS, MyReactFiberKey, NO_CONTEXT, NOEFFECT, NOLANE, PASSIVE_FLAGS, PLACEMENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getIsFlushEffecting, getPendingUpdateFiberList, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_FLAGS, MyReactFiberKey, NO_CONTEXT, NOEFFECT, NOLANE, PASSIVE_FLAGS, PLACEMENT, PORTAlCOMPONENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
 import { IEffectHook, MyFiber, MyReactElement, MyStateNode } from "./type";
 import { isHostComponent, isPortalComponent, updateDom } from "./dom";
 import { logEffectType, logFiberTree } from "./utils";
@@ -27,6 +27,15 @@ function getStateNode(fiber: MyFiber) {
   return childFiber?.stateNode || null;
 }
 
+function getDeleteStateNode(fiber: MyFiber) {
+  if (!fiber) return null;
+  let childFiber = fiber;
+  while (childFiber && childFiber.tag !== PORTAlCOMPONENT && !childFiber.stateNode) {
+    childFiber = childFiber.child;
+  }
+  return childFiber?.stateNode || null;
+}
+
 export function disconnectElementAndFiber(fiber: MyFiber) {
   if (fiber.element) {
     if ((fiber.element as MyReactElement)._owner) {
@@ -47,9 +56,9 @@ function commitDelete(fiber: MyFiber) {
   }
 
   const parentDom: MyStateNode | null = getParentStateNode(fiber)
-  const childDom: MyStateNode | null = getStateNode(fiber);
+  const childDom: MyStateNode | null = getDeleteStateNode(fiber);
   if (parentDom && childDom) {
-    isInDebugger && console.log(parentDom, '删除', childDom)
+    // console.log(parentDom, _.cloneDeep(fiber), '删除', childDom, parentDom.contains(childDom))
     if (parentDom.contains(childDom)) {
       parentDom.removeChild(childDom);
     }
@@ -61,7 +70,6 @@ function commitDelete(fiber: MyFiber) {
     commitRef(fiber, true)
   }
 
-  clearFiber(fiber);
 }
 
 function findHostStateNode(fiber: MyFiber, parentDom: HTMLElement): MyFiber | null | undefined {
@@ -114,6 +122,7 @@ function commitPlacement(fiber: MyFiber) {
     const currentDom = getStateNode(fiber);
     // console.log('dom', { fiber, parentDom, currentDom, insertDom})
     if (!currentDom) {
+      // return;
       throw new Error('运行时出错')
     }
     if (insertDom) {
@@ -287,10 +296,12 @@ export function handleEffect(tag: number, rootFiber: MyFiber, jumpReRender = fal
     }
     setCurrentContext(NO_CONTEXT)
     setCurrentContext(CREATE_CONTEXT)
+    // console.log('effect执行------->')
     while (createList.length) {
       const [effect, create] = createList.shift();
       effect.destroy = create()
     }
+    // console.log('effect结束<-------')
     setCurrentContext(NO_CONTEXT)
     rootFiber.updateQueue.firstEffect = null;
     rootFiber.updateQueue.lastEffect = null;
@@ -332,8 +343,11 @@ export function commitRoot() {
     let firstEffect = wipRoot.firstEffect;
     const endEffect = wipRoot.lastEffect?.nextEffect ?? null;
 
+    for(const f of deletions) {
+      commitDelete(f);
+    }
     while (deletions.length) {
-      commitDelete(deletions.shift())
+      clearFiber(deletions.shift())
     }
 
     while (firstEffect && firstEffect !== endEffect) {

@@ -30,7 +30,7 @@ export const findChildStateNode = (fiber: MyFiber | null) => {
   return findChildStateNode(fiber.child)
 }
 
-const bodyMap = new Map<string, Function>()
+const bodyMap = new Map<string, EventListenerOrEventListenerObject>()
 // export function getKeys(key: string) {
 //   if (!map.has(key)) {
 //     map.set(key, getUUID(key))
@@ -38,7 +38,7 @@ const bodyMap = new Map<string, Function>()
 //   return map.get(key)
 // }
 
-const weakMap = new WeakMap<MyStateNode, Map<string, Function>>();
+const weakMap = new WeakMap<MyStateNode, Map<string, EventListenerOrEventListenerObject>>();
 
 
 export function getTopFiber(fiber: MyFiber): HTMLElement | Text {
@@ -49,6 +49,36 @@ export function getTopFiber(fiber: MyFiber): HTMLElement | Text {
   return f ? (f.element as MyPortalElement).containerInfo : fiberRoot.stateNode;
 }
 
+const getEventFn = (key: string, fiber: MyFiber) => (e: Event) => {
+  // console.log(key.slice(2).toLowerCase(), e);
+  const originstopPropagation = e.stopPropagation
+  runInBatchUpdate(() => {
+    let dom = e.target as HTMLElement;
+    let jump = false;
+    const topDom = getTopFiber(fiber);
+    while (dom && dom !== topDom) {
+      const targetFiber: MyFiber = dom[MyReactFiberKey];
+      // console.log(dom, targetFiber)
+      if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key]) {
+        e.stopPropagation = (...args: []) => {
+          jump = true;
+          originstopPropagation.call(e, ...args)
+        }
+        // console.log('触发回调时候的fiber', targetFiber, [targetFiber.memoizedProps[key]])
+        if (!_.isFunction(targetFiber.memoizedProps[key])) {
+          console.warn(e, '不是函数')
+        } else {
+          targetFiber.memoizedProps[key](e)
+        }
+      }
+      if (jump) {
+        break;
+      }
+      dom = dom.parentElement
+    }
+  })
+}
+
 const topDomIdMap = new WeakMap();
 
 export function getUniqId(dom: any, key: string) {
@@ -57,6 +87,13 @@ export function getUniqId(dom: any, key: string) {
   }
   return topDomIdMap.get(dom)
 }
+
+const eventDomListenerMap = 
+  new WeakMap<MyStateNode, { 
+    fn: EventListenerOrEventListenerObject, key: string
+    uniqId: string, map: Map<string, EventListenerOrEventListenerObject>
+   }[]>();
+
 
 export function addEventListener(key: string, fiber: MyFiber) {
   // const rootFiber = getRootFiber(fiber);
@@ -70,39 +107,16 @@ export function addEventListener(key: string, fiber: MyFiber) {
   if (!weakMap.has(fiber.stateNode)) {
     weakMap.set(fiber.stateNode, new Map())
   }
-  const map = isUseInDom ? weakMap.get(fiber.stateNode) : bodyMap;
+  const map: Map<string, EventListenerOrEventListenerObject> = isUseInDom ? weakMap.get(fiber.stateNode) : bodyMap;
   const eventDom = isUseInDom ? fiber.stateNode : topDom;
   if (!map.has(uniqId)) {
-    const fn = (e: Event) => {
-      // console.log(key.slice(2).toLowerCase(), e);
-      const originstopPropagation = e.stopPropagation
-      runInBatchUpdate(() => {
-        let dom = e.target as HTMLElement;
-        let jump = false;
-        while (dom && dom !== topDom) {
-          // console.log(dom)
-          const targetFiber: MyFiber = dom[MyReactFiberKey];
-          if (targetFiber && isHostComponent(targetFiber) && targetFiber.memoizedProps[key]) {
-            e.stopPropagation = (...args: []) => {
-              jump = true;
-              originstopPropagation.call(e, ...args)
-            }
-            // console.log('触发回调时候的fiber', targetFiber, [targetFiber.memoizedProps[key]])
-            if (!_.isFunction(targetFiber.memoizedProps[key])) {
-              console.warn(e, '不是函数')
-            } else {
-              targetFiber.memoizedProps[key](e)
-            }
-          }
-          if (jump) {
-            break;
-          }
-          dom = dom.parentElement
-        }
-      })
-    }
+    const fn = getEventFn(key, fiber);
     eventDom.addEventListener(key.slice(2).toLowerCase(), fn)
-    // console.log('eventDom', eventDom, key)
+    if (!eventDomListenerMap.has(eventDom)) {
+      eventDomListenerMap.set(eventDom, [])
+    }
+    eventDomListenerMap.get(eventDom).push({ fn, key, uniqId, map })
+    console.log('eventDom1111', eventDom, key, fn);
     map.set(uniqId, fn);
   }
 
@@ -129,6 +143,39 @@ export function updateDom(fiber: MyFiber) {
       const oldProps = fiber.alternate?.commitCount > 0 ?
         fiber.alternate?.memoizedProps || {} : {};
       // console.log({newProps, oldProps})
+
+      if (isPortalComponent(fiber)) {
+        const oldDom: HTMLElement = fiber.alternate && fiber.alternate?.stateNode as HTMLElement;
+        const newDom: HTMLElement = (fiber.element as MyPortalElement).containerInfo 
+        if (newDom !== oldDom) {
+
+  
+          mountChildDom(fiber, newDom);
+          for(const { fn, key, uniqId, map } of eventDomListenerMap.get(oldDom) || []) {
+            const k = key.slice(2).toLowerCase()
+            oldDom.removeEventListener(k, fn)
+            // console.log('eventDom', newDom, k, fn);
+            map.delete(uniqId)
+            if (!eventDomListenerMap.has(newDom)) {
+              eventDomListenerMap.set(newDom, [])
+            }
+            const newUniqId = getUniqId(newDom, key);
+            if (!map.has(newUniqId)) {
+              console.log('eventDom2222', newDom, k, fn);
+              newDom.addEventListener(k, fn);
+              map.set(newUniqId, fn)
+            } else {
+              console.log('已经有过了');
+            }
+            eventDomListenerMap.get(newDom).push({ fn, key, uniqId: newUniqId, map })
+          }
+          eventDomListenerMap.delete(oldProps as HTMLElement)
+        }
+        
+        return;
+      }
+
+
       Object.keys(oldProps).forEach(key => {
         if (key === 'style') {
           const styles = (dom as HTMLElement).style || {};

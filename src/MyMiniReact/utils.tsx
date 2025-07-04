@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { MyElement, MyFiber, MyProps, MySingleReactNode } from "./type";
+import { MyElement, MyFiber, MyPortalElement, MyProps, MySingleReactNode } from "./type";
 import { IRenderNode, renderTree } from "../View";
 import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts, MEMOCOMPONENT, PORTAlCOMPONENT } from "./const";
 
@@ -31,6 +31,9 @@ export function isStringOrNumber(element: MySingleReactNode) {
 }
 
 export function getPropsByElement(element: MySingleReactNode): MyProps {
+  if ((element as MyPortalElement)?.$$typeof === window.reactPortalType) {
+    return (element as MyPortalElement);
+  }
   return isStringOrNumber(element) ? (element as unknown as MyProps) : element.props
 }
 

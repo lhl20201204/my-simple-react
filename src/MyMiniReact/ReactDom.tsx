@@ -37,6 +37,7 @@ export function ensureRootIsScheduled(isSync: boolean) {
   //     rootFiber ? getEffectListId(rootFiber) : ''
   //   ]
   //  }))
+  // console.log('ensureRootIsScheduled', _.cloneDeep(newWipRoot))
   scheduleRootFiber(newWipRoot, isSync)
 }
 

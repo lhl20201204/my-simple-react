@@ -52,7 +52,7 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
     id: id++,
     key: (element as MyReactElement)?.key,
     pendingProps: getPropsByElement(element),
-    type: (isStringOrNumber(element) ? 'text' : element?.type),
+    type:  (isStringOrNumber(element) ? 'text' : element?.type),
     flags: NOEFFECT,
     stateNode: null,
     tag: fiberTag,
