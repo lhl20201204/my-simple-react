@@ -6,22 +6,22 @@ export type MyProps = {
 }
 export type MyDomNode = HTMLElement;
 
-export type MyStateNode = null | MyDomNode | Text;
+export type MyStateNode = null | MyDomNode | Text | InstanceType<MyClassComponent>;
 
 export type MyState = Record<string, any>;
 
 export type MyRef<T> = {
-  current: T;
+  current: T | null
 };
 
-export type MyFiberRef = MyRef<any> | (((x: any) => void))
+export type MyFiberRef<T> = MyRef<T> | (((x: T | null) => void))
 
-export type MyFunctionComponent = (props: MyProps, ref?: MyRef) => MyReactNode;
+export type MyFunctionComponent = (props: MyProps, ref?: MyFiberRef<any>) => MyReactNode;
 
 export type MyForwardRefComponent<T extends MyFunctionComponent> = {
   $$typeof: Symbol;
   render: T;
-  (props: MyFunctionComponentProps<T> & { ref?: MyRef }): MyReactNode;
+  (props: MyFunctionComponentProps<T> & { ref?: MyFiberRef<any> }): MyReactNode;
 }
 
 export type MyLazyPayload<T> = {
@@ -50,7 +50,7 @@ export type MyLazyComponent<T extends MyFunctionComponent> = {
   (props: MyFunctionComponentProps<T>): ReturnType<T>;
 }
 
-export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyRef) => MyReactNode ? f :
+export type MyFunctionComponentProps<T> = T extends (props: infer f, ref?: MyFiberRef<any>) => MyReactNode ? f :
   T extends MyForwardRefComponent<infer Y> ? MyFunctionComponentProps<Y> : never;
 
 export type MyMemoComponent<T extends MyFunctionComponent | MyForwardRefComponent> = {
@@ -198,7 +198,7 @@ export type MyFiber = {
   memoizedState: MyState;
   nextEffect: MyFiber | null;
   pendingProps: MyProps;
-  ref: MyFiberRef | null;
+  ref: MyFiberRef<any> | null;
   return: MyFiber | null;
   sibling: MyFiber | null;
   stateNode: MyStateNode;
@@ -212,3 +212,33 @@ export type MyFiberRoot = {
   current: MyFiber | null;
   flag: number;
 };
+
+
+// 在这里补充MyClassComponent的类型
+export interface IMyClassComponent<P extends MyProps = {}, S extends MyState = {}> {
+  props: P;
+  state: S;
+  context: Record<string, any>;
+  _reactInternals: MyFiber | null;
+  updateList?: (Partial<S> | ((c: Partial<S>) => Partial<S>))[];
+  forceUpdateList: Function[];
+  dispatchAction?: (x: Partial<S> | ((prevState: Readonly<S>) => Partial<S>)) => void;
+  forceUpdateDispatchAction?: (cb: Function) => void;
+  // new (props: P): void;
+  isReactComponent(): boolean;
+  setState(state: Partial<S> | ((prevState: Readonly<S>) => Partial<S>)): void;
+  forceUpdate(cb?: Function): void;
+  render(): MyReactNode;
+  componentDidMount?(): void;
+  componentDidUpdate?(prevProps: Readonly<P>, prevState: Readonly<S>, snapshot?: any): void;
+  componentWillUnmount?(): void;
+  shouldComponentUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>): boolean;
+  getSnapshotBeforeUpdate?: (prevProps: Readonly<P>, prevState: Readonly<S>) => any;
+  componentDidCatch?(error: Error, errorInfo: MyReact.ErrorInfo): void;
+}
+
+export type IMyClassComponentStatic<P extends MyProps = {}, S extends MyState = {}> = {
+  getDerivedStateFromError?(error: Error): Partial<any> | null;
+  getDerivedStateFromProps?(nextProps: any, currentState: any): any | null;
+  contextType?: MyContext<any>;
+}

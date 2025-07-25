@@ -75,6 +75,7 @@ export function runInBatchUpdate<T>(cb: () => T, jumpReRender = false): T {
   setBatchUpdating(true)
   const ret = cb()
   setBatchUpdating(preBol)
+  // console.error('runInBatchUpdate', _.cloneDeep({ preBol, jumpReRender, bol: !preBol && !jumpReRender}))
   if (!preBol && !jumpReRender) {
     ensureRootIsScheduled(true)
   }

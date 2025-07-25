@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { MyElement, MyFiber, MyPortalElement, MyProps, MySingleReactNode } from "./type";
+import { MyFiber, MyPortalElement, MyProps, MySingleReactNode } from "./type";
 import { IRenderNode, renderTree } from "../View";
 import { EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EffECTDicts, MEMOCOMPONENT, PORTAlCOMPONENT } from "./const";
 
@@ -24,6 +24,10 @@ export function getUUID(str: string) {
   }
   idSet.add(str2)
   return str2;
+}
+
+export function fiberHadAlternate(fiber: MyFiber) {
+  return fiber?.alternate && fiber?.alternate.commitCount > 0
 }
 
 export function isStringOrNumber(element: MySingleReactNode) {
@@ -87,7 +91,7 @@ export function isDepEqual(dep1: Array<any> | null, dep2: Array<any> | null) {
   return true
 }
 
-export function logEffectType(fiber: MyFiber) {
+export function getFiberTag(fiber: MyFiber) {
 
   const ret = []
   _.forEach(EffECTDicts, (v, k) => {
@@ -122,7 +126,7 @@ export function logFiberTree(fiber: MyFiber) {
     }
     const node: IRenderNode = {
       value: f.id,
-      name: `${f.id}(${name})`,
+      name: `${f.id}-${f.alternate?.id ?? ''}(${name})`,
       children: []
     }
     // if (f.id === 10) {
@@ -158,8 +162,8 @@ export function getEffectListId(fiber: MyFiber, onlyId = false) {
   return ret.join(',')
 }
 
-export function logFiberIdPath(fiber: MyFiber, ret = []) {
-  return fiber ? logFiberIdPath(fiber.return, [...ret, fiber.id,]) : ret.join('->');
+export function getFiberIdPathArrow(fiber: MyFiber, ret = []) {
+  return fiber ? getFiberIdPathArrow(fiber.return, [...ret, fiber.id,]) : ret.join('->');
 }
 
 export function getCommitEffectListId(fiber: MyFiber) {
@@ -167,8 +171,47 @@ export function getCommitEffectListId(fiber: MyFiber) {
   let endEffect = fiber.lastEffect?.nextEffect ?? null;
   const ret = []
   while (f && f !== endEffect) {
-    ret.push([f.id, f.flags, logEffectType(f)].join('-'))
+    ret.push([f.id, f.flags, getFiberTag(f)].join('-'))
     f = f.nextEffect
   }
   return ret.join(',')
+}
+
+export function saveCurrentCanvasTree() {
+  const canvas = document.getElementById('view');
+  if (canvas) {
+    const dataUrl = (canvas as HTMLCanvasElement).toDataURL();
+    const a = document.createElement('img');
+    a.width = (canvas as HTMLCanvasElement).width;
+    a.height = (canvas as HTMLCanvasElement).height;
+    a.src = dataUrl;
+    document.body.appendChild(a);
+  }
+}
+
+export function ensureFiberContainedByRootFiber(targetFiber: MyFiber, rootfiber?: MyFiber) {
+  if (!rootfiber) {
+    return false;
+  }
+  let f = targetFiber;
+  while (f) {
+    if (f === rootfiber) {
+      return true;
+    }
+    f = f.return;
+  }
+  return false;
+}
+
+
+export function flagsContain(flags: number, flag: number) {
+  return flags & flag
+}
+
+export function flagsAdd(flags: number, flag: number) {
+  return flags | flag
+}
+
+export function flagsRemove(flags: number, flag: number) {
+  return flags & ~flag
 }

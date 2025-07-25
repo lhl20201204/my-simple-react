@@ -2,7 +2,7 @@ declare namespace JSX {
   interface CSSProperties extends CustomCSSProperties {
     
   }
-  type IntrinsicElements = Generate<CommonHTMLTags>;
+  type IntrinsicElements = Generate<CommonHTMLTags> ;
 
   type Element = MyElement;
   interface IntrinsicAttributes {

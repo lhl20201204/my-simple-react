@@ -1,18 +1,17 @@
 import _ from "lodash";
-import { CREATE_CONTEXT, DELETE, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, FORWARDREFCOMPONENT, FUNCTIONCOMPONENT, getIsFlushEffecting, getPendingUpdateFiberList, HOSTCOMPONENT, INSERTBEFORE, isInDebugger, LAYOUT_FLAGS, MyReactFiberKey, NO_CONTEXT, NOEFFECT, NOLANE, PASSIVE_FLAGS, PLACEMENT, PORTAlCOMPONENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot } from "./const";
+import { SNAPSHOT, CREATE_CONTEXT, deletions, DESTROY_CONTEXT, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, fiberRoot, getIsFlushEffecting, getPendingUpdateFiberList, INSERTBEFORE, LAYOUT_FLAGS, NO_CONTEXT, NOEFFECT, PASSIVE_FLAGS, PLACEMENT, PORTAlCOMPONENT, REFEFFECT, rootFiber, setCurrentContext, setIsFlushEffecting, setRootFiber, setWipRoot, UPDATE, wipRoot, UPDATEORMOUNT, ErrorBoundary, ErrorFiberList, NoHandleError, PLACEMENT_SKIP, SUSPENSE_REMOVE, SUSPENSE_RECOVERY, RENDER_SUSPENSE, GetDeriveStateFromErrorFiberList } from "./const";
 import { IEffectHook, MyFiber, MyReactElement, MyStateNode } from "./type";
-import { isHostComponent, isPortalComponent, updateDom } from "./dom";
-import { logEffectType, logFiberTree } from "./utils";
-import { reRender, runInBatchUpdate } from "./ReactDom";
-import { originConsoleLog, untrackFiber } from "./test";
-import { setFiberWithFlags } from "./beginWork";
+import { isClassComponent, isHostComponent, isPortalComponent, updateDom } from "./dom";
+import { fiberHadAlternate, flagsContain, flagsRemove, getFiberTag, logFiberTree } from "./utils";
+import { runInBatchUpdate } from "./ReactDom";
+import { handlePromiseError, setFiberWithFlags } from "./beginWork";
 import { sumbitEffect } from "./completeWork";
 import { clearFiber } from "./fiber";
 
 function getParentStateNode(fiber: MyFiber) {
   if (!fiber) return null;
   let parentFiber = fiber.return;
-  while (parentFiber && !parentFiber.stateNode) {
+  while (parentFiber && !isHostComponent(parentFiber)) {
     parentFiber = parentFiber.return;
   }
   return parentFiber?.stateNode || fiberRoot.stateNode;
@@ -21,7 +20,7 @@ function getParentStateNode(fiber: MyFiber) {
 function getStateNode(fiber: MyFiber) {
   if (!fiber) return null;
   let childFiber = fiber;
-  while (childFiber && !childFiber.stateNode) {
+  while (childFiber && !isHostComponent(childFiber)) {
     childFiber = childFiber.child;
   }
   return childFiber?.stateNode || null;
@@ -30,7 +29,7 @@ function getStateNode(fiber: MyFiber) {
 function getDeleteStateNode(fiber: MyFiber) {
   if (!fiber) return null;
   let childFiber = fiber;
-  while (childFiber && childFiber.tag !== PORTAlCOMPONENT && !childFiber.stateNode) {
+  while (childFiber && childFiber.tag !== PORTAlCOMPONENT && !isHostComponent(childFiber)) {
     childFiber = childFiber.child;
   }
   return childFiber?.stateNode || null;
@@ -55,6 +54,9 @@ function commitDelete(fiber: MyFiber) {
     return;
   }
 
+  const onlyHandleDom = flagsContain(fiber.flags, SUSPENSE_REMOVE)
+
+
   const parentDom: MyStateNode | null = getParentStateNode(fiber)
   const childDom: MyStateNode | null = getDeleteStateNode(fiber);
   if (parentDom && childDom) {
@@ -63,11 +65,19 @@ function commitDelete(fiber: MyFiber) {
       parentDom.removeChild(childDom);
     }
   }
-  if (fiber.flags & LAYOUT_FLAGS) {
+
+  if (!onlyHandleDom && flagsContain(fiber.flags, LAYOUT_FLAGS)) {
     handleLayoutEffectDestroy(fiber);
   }
-  if (fiber.ref && isHostComponent(fiber)) {
+  if (!onlyHandleDom && fiber.ref && (isHostComponent(fiber) || isClassComponent(fiber))) {
     commitRef(fiber, true)
+  }
+
+  if (!onlyHandleDom && isClassComponent(fiber)) {
+    // console.warn(_.cloneDeep(fiber))
+    if (_.isFunction(fiber.stateNode?.componentWillUnmount)) {
+      fiber.stateNode.componentWillUnmount()
+    }
   }
 
 }
@@ -77,7 +87,7 @@ function findHostStateNode(fiber: MyFiber, parentDom: HTMLElement): MyFiber | nu
     return null;
   }
 
-  if (fiber.stateNode && fiber.stateNode?.parentElement === parentDom) {
+  if (isHostComponent(fiber) && fiber.stateNode?.parentElement === parentDom) {
     return fiber;
   }
 
@@ -85,17 +95,38 @@ function findHostStateNode(fiber: MyFiber, parentDom: HTMLElement): MyFiber | nu
 }
 
 function findSiblingHostDom(fiber: MyFiber, parentDom: HTMLElement, index = -1) {
-  if (!fiber) {
+  // if (!fiber) {
+  //   return null;
+  // }
+
+  let parentFiber: MyFiber | null = fiber?.return ?? null;
+  while (parentFiber && !isHostComponent(parentFiber)) {
+    parentFiber = parentFiber.return;
+  }
+  if (!parentFiber || !parentFiber.stateNode) {
     return null;
   }
 
   let f = fiber;
+  let targetIndex = index;
   while (f) {
     const target = findHostStateNode(f, parentDom);
-    if (target && !(f.flags & INSERTBEFORE) && f.index > index) {
+    if (target && !flagsContain(f.flags, INSERTBEFORE) && f.index > targetIndex) {
       return target.stateNode;
     }
-    f = f.sibling;
+    if (f.sibling) {
+      f = f.sibling;
+    } else {
+      while (f !== parentFiber && !f.sibling) {
+        f = f.return;
+      }
+      if (f === parentFiber) {
+        return null;
+      }
+      targetIndex = f.index
+      // console.log('targetIndex', targetIndex)
+      f = f.sibling;
+    }
   }
   return null;
 
@@ -116,11 +147,11 @@ function commitPlacement(fiber: MyFiber) {
   if (parentDom) {
     // console.log(parentDom, 'appendChild', fiber.stateNode)
     // const index = fiber.index;
-    const insertDom = findSiblingHostDom(fiber.sibling, parentDom as HTMLElement,
+    const insertDom = findSiblingHostDom(fiber, parentDom as HTMLElement,
       fiber.index
     );
     const currentDom = getStateNode(fiber);
-    // console.log('dom', { fiber, parentDom, currentDom, insertDom})
+    // console.log('dom', _.cloneDeep({ fiber, parentDom, currentDom, insertDom }))
     if (!currentDom) {
       // return;
       throw new Error('运行时出错')
@@ -147,7 +178,9 @@ function commitUpdate(fiber: MyFiber) {
 }
 
 function commitRef(fiber: MyFiber, isDestroy: boolean) {
-  if (isHostComponent(fiber) &&
+  if ((isHostComponent(fiber) ||
+    isClassComponent(fiber)
+  ) &&
     fiber.ref) {
     // console.log('触发', fiber)
     const instance = isDestroy ? null : fiber.stateNode;
@@ -182,10 +215,10 @@ function handleLayoutEffectDestroy(fiber: MyFiber) {
 
 function commitLayoutEffectOrRef(fiber: MyFiber) {
   // console.log(_.cloneDeep({ fiber }))
-  if (fiber.flags & REFEFFECT) {
+  if (flagsContain(fiber.flags, REFEFFECT)) {
     commitRef(fiber, false);
   }
-  if (fiber.flags & LAYOUT_FLAGS) {
+  if (flagsContain(fiber.flags, LAYOUT_FLAGS)) {
     let firstEffect = fiber.updateQueue.firstEffect;
     const endEffect = fiber.updateQueue.lastEffect?.next ?? null;
     // console.log(_.cloneDeep({ firstEffect, endEffect}))
@@ -203,33 +236,113 @@ function commitEffect(fiber: MyFiber) {
   sumbitEffect(fiber);
 }
 
+function commitSnapShot(fiber: MyFiber) {
+  if (fiberHadAlternate(fiber)) {
+    const instance = fiber.stateNode;
+    if (instance.getSnapshotBeforeUpdate) {
+      fiber.memoizedState = {
+        ...fiber.memoizedState,
+        snapShot: instance.getSnapshotBeforeUpdate(
+          fiber.alternate.pendingProps,
+          fiber.alternate.memoizedState?.prevState ?? {}
+        )
+      }
+    }
+  }
+}
+
+function commitClassComponent(fiber: MyFiber) {
+  if (fiberHadAlternate(fiber)) {
+    const instance = fiber.stateNode;
+    if (instance.componentDidUpdate) {
+      try {
+        instance.componentDidUpdate(
+          fiber.alternate.pendingProps,
+          fiber.alternate.memoizedState?.prevState ?? {},
+          fiber.alternate.memoizedState?.snapShot ?? null
+        )
+      } catch (e) {
+        handlePromiseError(fiber, e, true)
+      }
+    }
+  } else {
+    const instance = fiber.stateNode;
+    if (instance.componentDidMount) {
+      try {
+        instance.componentDidMount()
+      } catch (e) {
+        handlePromiseError(fiber, e, true)
+      }
+    }
+  }
+}
+
+function commitErrorBoundary(fiber: MyFiber) {
+  if (_.isFunction(fiber.stateNode?.componentDidCatch)) {
+    const targetIndex = ErrorFiberList.findIndex(c => c.fiber === fiber
+      || c.fiber === fiber.alternate
+    );
+    if (targetIndex > -1) {
+      try {
+        fiber.stateNode.componentDidCatch(
+          ErrorFiberList[targetIndex].error
+        )
+        if (!flagsContain(fiber.flags, UPDATE)
+        && !_.isFunction(fiber.type.getDerivedStateFromError)) {
+          setFiberWithFlags(fiber, NoHandleError)
+        }
+        ErrorFiberList.splice(targetIndex, 1);
+      } catch (e) {
+        handlePromiseError(fiber, e, true)
+      }
+    } else {
+      console.warn('未处理的情况', ErrorFiberList)
+    }
+  }
+}
+
 function commitWork(fiber: MyFiber) {
+  if (fiber.flags === PLACEMENT_SKIP) {
+    fiber.flags = flagsRemove(fiber.flags, PLACEMENT_SKIP)
+  }
   if (!fiber || fiber.flags === NOEFFECT) return;
 
-  // console.error('commitWork', logEffectType(fiber), _.cloneDeep(fiber));
+
+  // console.error('commitWork', getFiberTag(fiber), _.cloneDeep(fiber));
 
   // if (fiber.flags & DELETE) {
   //   commitDelete(fiber);
   //   fiber.flags &= ~DELETE
   // }
 
-  if ((fiber.flags & PLACEMENT) || (fiber.flags & INSERTBEFORE)) {
-    commitPlacement(fiber);
-    fiber.flags &= ~PLACEMENT
-    fiber.flags &= ~INSERTBEFORE
+  if (flagsContain(fiber.flags, PLACEMENT_SKIP)) {
+    fiber.flags = flagsRemove(fiber.flags, PLACEMENT_SKIP)
   }
 
-  if ((fiber.flags & PASSIVE_FLAGS) ||
-    (fiber.flags & LAYOUT_FLAGS)
+  if (flagsContain(fiber.flags, PLACEMENT) || flagsContain(fiber.flags, INSERTBEFORE)
+    || flagsContain(fiber.flags, SUSPENSE_RECOVERY)) {
+    commitPlacement(fiber);
+    fiber.flags = flagsRemove(fiber.flags, PLACEMENT)
+    fiber.flags = flagsRemove(fiber.flags, INSERTBEFORE)
+    fiber.flags = flagsRemove(fiber.flags, SUSPENSE_RECOVERY)
+  }
+
+  if (flagsContain(fiber.flags, ErrorBoundary)) {
+    commitErrorBoundary(fiber)
+    fiber.flags = flagsRemove(fiber.flags, ErrorBoundary)
+  }
+
+  if (flagsContain(fiber.flags, PASSIVE_FLAGS) ||
+    flagsContain(fiber.flags, LAYOUT_FLAGS)
   ) {
     commitEffect(fiber)
-    fiber.flags &= ~PASSIVE_FLAGS
+    fiber.flags = flagsRemove(fiber.flags, PASSIVE_FLAGS)
   }
 
-  if (fiber.flags & UPDATE) {
+  if (flagsContain(fiber.flags, UPDATE)) {
     // console.log('commitUpdate', fiber)
     commitUpdate(fiber);
-    fiber.flags &= ~UPDATE
+    fiber.flags = flagsRemove(fiber.flags, UPDATE)
   }
 
   // if (fiber.flags !== NOEFFECT) {
@@ -320,44 +433,67 @@ export function handleEffect(tag: number, rootFiber: MyFiber, jumpReRender = fal
 }
 
 export function commitRoot() {
-  let firstEffect = wipRoot.firstEffect;
-
-  // console.error('commitRoot', _.cloneDeep({wipRoot, firstEffect, lastEffect: wipRoot.lastEffect}))
-  // const idList = []
-  const endEffect = wipRoot.lastEffect?.nextEffect ?? null
-
-  // console.error(getCommitEffectListId(wipRoot), _.cloneDeep(wipRoot))
-
-  // for (const x of deletions) {
-  //   commitDelete(x)
-  // }
-  while (firstEffect && firstEffect !== endEffect) {
-    // idList.push([firstEffect.id ,_.cloneDeep(firstEffect)])
-    commitWork(firstEffect);
-
-    firstEffect = firstEffect.nextEffect;
-  }
 
   setIsFlushEffecting(true)
   runInBatchUpdate(() => {
     let firstEffect = wipRoot.firstEffect;
-    const endEffect = wipRoot.lastEffect?.nextEffect ?? null;
+    wipRoot.commitCount++;
 
-    for(const f of deletions) {
+    // console.error('commitRoot', _.cloneDeep({wipRoot, firstEffect, lastEffect: wipRoot.lastEffect}))
+    // const idList = []
+    let endEffect = wipRoot.lastEffect?.nextEffect ?? null
+
+    // console.error(getCommitEffectListId(wipRoot), _.cloneDeep(wipRoot))
+
+    // for (const x of deletions) {
+    //   commitDelete(x)
+    // }
+    const fiberList = []
+    while (firstEffect && firstEffect !== endEffect) {
+      if (flagsContain(firstEffect.flags, RENDER_SUSPENSE)) {
+        firstEffect.flags = flagsRemove(firstEffect.flags, RENDER_SUSPENSE)
+      } else {
+        firstEffect.commitCount++;
+      }
+      fiberList.push(firstEffect);
+      if (flagsContain(firstEffect.flags, SNAPSHOT)) {
+        commitSnapShot(firstEffect)
+        firstEffect.flags = flagsRemove(firstEffect.flags, SNAPSHOT)
+      }
+      firstEffect = firstEffect.nextEffect;
+    }
+    console.log(_.cloneDeep(deletions))
+    for (const f of deletions) {
       commitDelete(f);
     }
     while (deletions.length) {
-      clearFiber(deletions.shift())
+      const f = deletions.shift();
+      // console.error('被删除的fiber', _.cloneDeep(f))
+      if (flagsContain(f.flags, SUSPENSE_REMOVE)) {
+        // console.error('suspense-remove', _.cloneDeep(f))
+      } else {
+        clearFiber(f)
+      }
     }
 
+
+    fiberList.forEach(firstEffect => {
+      commitWork(firstEffect);
+    })
+
+    firstEffect = wipRoot.firstEffect;
+    endEffect = wipRoot.lastEffect?.nextEffect ?? null;
+
+
+
     while (firstEffect && firstEffect !== endEffect) {
-      if (firstEffect.flags & REFEFFECT) {
-        // console.log(_.cloneDeep({ firstEffect }))
-        if (firstEffect.alternate && firstEffect.alternate.commitCount > 0) {
+      if (flagsContain(firstEffect.flags, REFEFFECT)) {
+        if (fiberHadAlternate(firstEffect)) {
           commitRef(firstEffect.alternate, true)
         }
       }
-      if (firstEffect.flags & LAYOUT_FLAGS) {
+
+      if (flagsContain(firstEffect.flags, LAYOUT_FLAGS)) {
         handleLayoutEffectDestroy(firstEffect);
       }
       firstEffect = firstEffect.nextEffect;
@@ -366,10 +502,16 @@ export function commitRoot() {
     firstEffect = wipRoot.firstEffect;
     while (firstEffect && firstEffect !== endEffect) {
       const fiber = firstEffect;
-      if (!!(fiber.flags & REFEFFECT) || !!(fiber.flags & LAYOUT_FLAGS)) {
+
+      if (flagsContain(firstEffect.flags, UPDATEORMOUNT)) {
+        commitClassComponent(firstEffect)
+        firstEffect.flags = flagsRemove(firstEffect.flags, UPDATEORMOUNT)
+      }
+      
+      if (flagsContain(fiber.flags, REFEFFECT) || flagsContain(fiber.flags, LAYOUT_FLAGS)) {
         commitLayoutEffectOrRef(fiber);
-        fiber.flags &= ~REFEFFECT
-        fiber.flags &= ~LAYOUT_FLAGS
+        fiber.flags = flagsRemove(fiber.flags, REFEFFECT)
+        fiber.flags = flagsRemove(fiber.flags, LAYOUT_FLAGS)
       }
       const origin = firstEffect;
       firstEffect = firstEffect.nextEffect;
@@ -378,7 +520,9 @@ export function commitRoot() {
 
     const list = getPendingUpdateFiberList();
     while (list.length) {
-      setFiberWithFlags(list.pop(), UPDATE)
+      const [fiber, flag] = list.pop()
+      // console.error('commitRoot-pendingUpdateFiberList', _.cloneDeep(fiber))
+      setFiberWithFlags(fiber, flag)
     }
 
     wipRoot.firstEffect = null;
@@ -387,7 +531,9 @@ export function commitRoot() {
     setRootFiber(wipRoot);
 
     port1.postMessage('EFFECT_PASSIVE')
-
+    if (ErrorFiberList.length || GetDeriveStateFromErrorFiberList.length) {
+      console.error('error冒泡没有处理');
+    }
     logFiberTree(wipRoot)
     setWipRoot(null);
   })

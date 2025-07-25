@@ -62,10 +62,14 @@ export const originSetTimeout = window.setTimeout;
 export function runInRecordLog(cb: () => void) {
   console.log = (...args) => {
     tempLogResult.push(args[0])
-    originConsoleLog('%c' + args[0], 'color: green', ...args.slice(1))
+    originConsoleLog('%c' + args[0], 'color: green', ...args.slice(1));
   }
-  const ret = cb();
-  console.log = originConsoleLog
+  let ret = null;
+  try {
+    ret = cb();
+  } finally {
+    console.log = originConsoleLog
+  }
   return ret
 }
 

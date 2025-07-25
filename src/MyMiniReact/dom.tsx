@@ -1,8 +1,9 @@
 import _ from "lodash";
 import { MyFiber, MyPortalElement, MyStateNode } from "./type";
-import { fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, isInDebugger, MyReactFiberKey, PORTAlCOMPONENT, PROVIDERCOMPONENT, ROOTCOMPONENT, SUSPENSECOMPONENT, TEXTCOMPONENT } from "./const";
+import { CLASSCOMPONENT, fiberRoot, FRAGMENTCOMPONENT, HOSTCOMPONENT, MyReactFiberKey, PORTAlCOMPONENT, PROVIDERCOMPONENT, ROOTCOMPONENT, SUSPENSECOMPONENT, TEXTCOMPONENT } from "./const";
 import { runInBatchUpdate } from "./ReactDom";
-import { getUUID } from "./utils";
+import { fiberHadAlternate, getUUID } from "./utils";
+import MyClassComponent from "./classComponent";
 
 export function isTextComponent(fiber: MyFiber) {
   return fiber.tag === TEXTCOMPONENT;
@@ -10,6 +11,31 @@ export function isTextComponent(fiber: MyFiber) {
 
 export function isPortalComponent(fiber: MyFiber) {
   return fiber.tag === PORTAlCOMPONENT;
+}
+
+export function isClassComponent(fiber: MyFiber) {
+  return fiber.tag === CLASSCOMPONENT;
+}
+
+export function isSuspenseComponent(fiber: MyFiber) {
+  return fiber.tag === SUSPENSECOMPONENT;
+}
+
+export function isErrorBoundaryComponent(fiber: MyFiber) {
+  return fiber.tag === CLASSCOMPONENT && (
+   ( _.isFunction(fiber.type.getDerivedStateFromError) &&
+   (fiber.type.getDerivedStateFromError !== MyClassComponent.getDerivedStateFromError)
+  )
+    || _.isFunction(fiber.stateNode?.componentDidCatch)
+  )
+}
+
+export function funIsClassComponent(type: any) {
+  return (
+    typeof type === 'function' &&
+    !!type.prototype &&
+    !!type.prototype.isReactComponent
+  );
 }
 
 export function isHostComponent(fiber: MyFiber) {
@@ -88,11 +114,11 @@ export function getUniqId(dom: any, key: string) {
   return topDomIdMap.get(dom)
 }
 
-const eventDomListenerMap = 
-  new WeakMap<MyStateNode, { 
+const eventDomListenerMap =
+  new WeakMap<MyStateNode, {
     fn: EventListenerOrEventListenerObject, key: string
     uniqId: string, map: Map<string, EventListenerOrEventListenerObject>
-   }[]>();
+  }[]>();
 
 
 export function addEventListener(key: string, fiber: MyFiber) {
@@ -116,7 +142,7 @@ export function addEventListener(key: string, fiber: MyFiber) {
       eventDomListenerMap.set(eventDom, [])
     }
     eventDomListenerMap.get(eventDom).push({ fn, key, uniqId, map })
-    console.log('eventDom1111', eventDom, key, fn);
+    // console.log('eventDom1111', eventDom, key, fn);
     map.set(uniqId, fn);
   }
 
@@ -140,18 +166,18 @@ export function updateDom(fiber: MyFiber) {
         }
         return;
       }
-      const oldProps = fiber.alternate?.commitCount > 0 ?
+      const oldProps = fiberHadAlternate(fiber) ?
         fiber.alternate?.memoizedProps || {} : {};
       // console.log({newProps, oldProps})
 
       if (isPortalComponent(fiber)) {
         const oldDom: HTMLElement = fiber.alternate && fiber.alternate?.stateNode as HTMLElement;
-        const newDom: HTMLElement = (fiber.element as MyPortalElement).containerInfo 
+        const newDom: HTMLElement = (fiber.element as MyPortalElement).containerInfo
         if (newDom !== oldDom) {
 
-  
+
           mountChildDom(fiber, newDom);
-          for(const { fn, key, uniqId, map } of eventDomListenerMap.get(oldDom) || []) {
+          for (const { fn, key, uniqId, map } of eventDomListenerMap.get(oldDom) || []) {
             const k = key.slice(2).toLowerCase()
             oldDom.removeEventListener(k, fn)
             // console.log('eventDom', newDom, k, fn);
@@ -161,17 +187,17 @@ export function updateDom(fiber: MyFiber) {
             }
             const newUniqId = getUniqId(newDom, key);
             if (!map.has(newUniqId)) {
-              console.log('eventDom2222', newDom, k, fn);
+              // console.log('eventDom2222', newDom, k, fn);
               newDom.addEventListener(k, fn);
               map.set(newUniqId, fn)
             } else {
-              console.log('已经有过了');
+              // console.log('已经有过了');
             }
             eventDomListenerMap.get(newDom).push({ fn, key, uniqId: newUniqId, map })
           }
           eventDomListenerMap.delete(oldProps as HTMLElement)
         }
-        
+
         return;
       }
 
@@ -267,6 +293,9 @@ export function mountChildDom(fiber: MyFiber, dom: HTMLElement) {
       f = f.sibling;
       continue;
     }
+    // if (isSuspenseComponent(f)) {
+    //   console.error('suspense', '跳过', _.cloneDeep(f));
+    // }
     const childDom = findChildStateNode(f);
     if (childDom) {
       dom.appendChild(childDom)
@@ -274,4 +303,5 @@ export function mountChildDom(fiber: MyFiber, dom: HTMLElement) {
     }
     f = f.sibling;
   }
+  // console.error('mountChildDom', _.cloneDeep(fiber), ret);
 }

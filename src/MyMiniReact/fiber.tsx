@@ -1,12 +1,12 @@
 import _ from "lodash";
 import { commitRoot, disconnectElementAndFiber } from "./commit";
-import { CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, LAZYCOMPONENT, MEMOCOMPONENT, MyReactFiberKey, NOEFFECT, NOLANE, PLACEMENT, PORTAlCOMPONENT, PROVIDERCOMPONENT, REFEFFECT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, SUSPENSECOMPONENT, TEXTCOMPONENT, UPDATE, wipRoot, workInProgress } from "./const";
-import { MyFiber, MyPortalElement, MyReactElement, MySingleReactNode } from "./type";
+import { CLASSCOMPONENT, CONSUMNERCOMPONENT, FORWARDREFCOMPONENT, FRAGMENTCOMPONENT, FUNCTIONCOMPONENT, HOSTCOMPONENT, LAZYCOMPONENT, MEMOCOMPONENT, MyReactFiberKey, NOEFFECT, NOLANE, PORTAlCOMPONENT, PROVIDERCOMPONENT, ROOTCOMPONENT, rootFiber, setIsRendering, setWorkInProgress, SUSPENSECOMPONENT, TEXTCOMPONENT, wipRoot, workInProgress } from "./const";
+import { MyFiber, MyReactElement, MySingleReactNode } from "./type";
 import { beginWork } from "./beginWork";
-import { getCommitEffectListId, getEffectListId, getPropsByElement, isStringOrNumber } from "./utils";
+import { getPropsByElement, isStringOrNumber } from "./utils";
 import { completeWork } from "./completeWork";
-import { originConsoleLog, trackFiber, untrackFiber } from "./test";
-import { isPortalComponent } from "./dom";
+import { trackFiber, untrackFiber } from "./test";
+import { funIsClassComponent, isClassComponent } from "./dom";
 
 
 let id = 0;
@@ -24,7 +24,7 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
     if (isStringOrNumber(element)) {
       fiberTag = TEXTCOMPONENT;
     } else if (typeof element?.type === 'function') {
-      fiberTag = FUNCTIONCOMPONENT;
+      fiberTag = funIsClassComponent(element.type) ? CLASSCOMPONENT  : FUNCTIONCOMPONENT;
     } else if (element?.type?.$$typeof === window.reactMemoType) {
       fiberTag = MEMOCOMPONENT;
     } else if (element?.type?.$$typeof === window.reactForwardRefType) {
@@ -114,7 +114,7 @@ export function createFiber(element: MySingleReactNode, index: number, alternate
     newFiber.flags = alternateFiber.flags;
     newFiber.firstEffect = alternateFiber.firstEffect;
     newFiber.lastEffect = alternateFiber.lastEffect;
-
+    newFiber.memoizedState = alternateFiber.memoizedState;
     newFiber.dependencies = alternateFiber.dependencies;
 
     // console.log(_.cloneDeep({ newFiber }))
@@ -176,16 +176,12 @@ export function workLoop(deadline: IdleDeadline) {
   }
 }
 
-export function performUnitOfWork(): MyFiber | null {
-  // 构建一课完整的fiber
-  let current = workInProgress;
-  let nextFiber = beginWork(current);
-  if (nextFiber) {
-    setWorkInProgress(nextFiber);
-    return nextFiber;
-  }
-  // console.log('不能继续向下了')
+export function breakCurrentWork(current: MyFiber): MyFiber | null {
+  let nextFiber = null;
   completeWork(current);
+  if (workInProgress !== current) {
+    return workInProgress;
+  }
   if (current.sibling) {
     setWorkInProgress(current.sibling)
     return current.sibling;
@@ -196,15 +192,53 @@ export function performUnitOfWork(): MyFiber | null {
   while (temp && !temp.sibling) {
     // console.log('向上')
     completeWork(temp)
+    if (workInProgress !== current) {
+      return workInProgress;
+    }
     temp = temp.return;
   }
   if (temp) {
     // console.log('往兄弟走')
     completeWork(temp)
+    if (workInProgress !== current) {
+      return workInProgress;
+    }
   }
   nextFiber = temp?.sibling;
   setWorkInProgress(nextFiber);
   return nextFiber;
+}
+
+export function performUnitOfWork(): MyFiber | null {
+  // 构建一课完整的fiber
+  let current = workInProgress;
+  let nextFiber = beginWork(current);
+  if (nextFiber) {
+    setWorkInProgress(nextFiber);
+    return nextFiber;
+  }
+  // // console.log('不能继续向下了')
+  // completeWork(current);
+  // if (current.sibling) {
+  //   setWorkInProgress(current.sibling)
+  //   return current.sibling;
+  // }
+
+  // let temp = current.return;
+  // // 开始competeWork
+  // while (temp && !temp.sibling) {
+  //   // console.log('向上')
+  //   completeWork(temp)
+  //   temp = temp.return;
+  // }
+  // if (temp) {
+  //   // console.log('往兄弟走')
+  //   completeWork(temp)
+  // }
+  // nextFiber = temp?.sibling;
+  // setWorkInProgress(nextFiber);
+  // return nextFiber;
+  return breakCurrentWork(current);
 }
 
 export function clearFiber(fiber: MyFiber) {
@@ -228,7 +262,6 @@ export function clearFiber(fiber: MyFiber) {
   fiber.id = null;
   fiber.ref = null;
   fiber.type = null;
-  fiber.tag = null;
   let f = fiber.updateQueue?.firstEffect;
   while (f) {
     f.fiber = null;
@@ -240,8 +273,13 @@ export function clearFiber(fiber: MyFiber) {
   }
   fiber.updateQueue = null;
   if (fiber.stateNode) {
-    fiber.stateNode[MyReactFiberKey] = null;
+    if (isClassComponent(fiber)) {
+      fiber.stateNode._reactInternals = null;
+    } else {
+      fiber.stateNode[MyReactFiberKey] = null;
+    }
   }
+  fiber.tag = null;
   fiber.stateNode = null;
   fiber.return = null;
   fiber.sibling = null;
@@ -279,5 +317,43 @@ export function dfsClearFiber(fiber: MyFiber) {
 }
 
 
+export function findFiberPath(fiber: MyFiber) {
+  const ret = [];
+  while (fiber) {
+    ret.push(fiber);
+    fiber = fiber.return;
+  }
+  return ret;
+}
 
+export function mayBeTargetFiber(f: MyFiber, s: MyFiber) {
+  return f === s || f?.alternate === s;
+}
 
+export function findTargetFiber(targetFiber: MyFiber, path: MyFiber[], rootFiber: MyFiber): MyFiber | null {
+  if (mayBeTargetFiber(targetFiber, rootFiber)) {
+    return rootFiber;
+  }
+  path.pop();
+  const top = path[path.length - 1];
+  let f = rootFiber.child;
+  while (f) {
+    const ret = mayBeTargetFiber(top, f) ? findTargetFiber(targetFiber, path, f) : null
+    if (ret) {
+      return ret;
+    }
+    f = f.sibling;
+  }
+  return null;
+}
+
+export function findCurrentFiberInCurrentRoot(fiber: MyFiber): MyFiber | null {
+  const path = findFiberPath(fiber);
+  const currentRootFiber = path[path.length - 1];
+  if (currentRootFiber.tag !== ROOTCOMPONENT) {
+    // console.warn('组件已经卸载')
+    return null;
+  }
+  const currentFiber = wipRoot ? findTargetFiber(fiber, path, wipRoot) : rootFiber ? findTargetFiber(fiber, path, rootFiber) : fiber;
+  return currentFiber;
+}

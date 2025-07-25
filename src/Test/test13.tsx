@@ -1,4 +1,5 @@
-import { Component, createContext } from "./utils";
+import { MyRef } from "../MyMiniReact/type";
+import { Component, createContext, useEffect } from "./utils";
 
 // 定义组件 props 和 state 的类型
 interface ParentComponentProps { }
@@ -34,6 +35,17 @@ const Ctx = createContext({
   cnt: 1
 })
 
+function C({ count }: { count: number}) {
+  console.log('render-c', count)
+  useEffect(() => {
+    console.log('C-create', count);
+    return () => {
+       console.log('C-destroy', count);
+    }
+  }, [count])
+  return <div>c</div>
+}
+
 // 父组件 - 用于测试组件挂载和卸载
 class ParentComponent extends Component<ParentComponentProps, ParentComponentState> {
   state = {
@@ -48,7 +60,7 @@ class ParentComponent extends Component<ParentComponentProps, ParentComponentSta
 
   constructor(props: ParentComponentProps) {
     super(props);
-    console.log('🔄 ParentComponent - constructor', { props }, this);
+    console.error('🔄 ParentComponent - constructor', { props }, this);
   }
 
   componentDidMount() {
@@ -94,8 +106,12 @@ class ParentComponent extends Component<ParentComponentProps, ParentComponentSta
     }))
   }
 
+  ref: MyRef<InstanceType<typeof LifecycleTestComponent>> = {
+    current: null
+  }
+
   render() {
-    console.log('🎨 ParentComponent - render');
+    console.log('🎨 ParentComponent - render', this.context);
     return (
       <div ref={(x) => {
         console.log('ref', [x]);
@@ -116,10 +132,15 @@ class ParentComponent extends Component<ParentComponentProps, ParentComponentSta
         />
         {this.state.showChild && (
           <LifecycleTestComponent
+            ref={((x) => {
+              console.warn('LifecycleTestComponent', x)
+              this.ref.current = x;
+            })}
             {...this.state.childProps}
             key={this.state.childProps.count} // 强制重新创建组件
           />
         )}
+        <C count={this.state.childProps.count} />
       </div>
     );
   }
@@ -127,6 +148,7 @@ class ParentComponent extends Component<ParentComponentProps, ParentComponentSta
 
 function A(props: ParentComponentState['childProps']) {
   if (props.count > 4) {
+    console.error('抛出错误。。。。')
     throw new Error('test');
   }
   return <div>A={props.count}</div>
@@ -142,6 +164,7 @@ class LifecycleTestComponent extends Component<LifecycleTestComponentProps, Life
     this.state = {
       count: 0,
       message: 'Hello from state',
+      // externalCount: 0,
       shouldUpdate: true
     };
   }
@@ -168,9 +191,12 @@ class LifecycleTestComponent extends Component<LifecycleTestComponentProps, Life
 
     // 设置定时器
     this.timer = setInterval(() => {
-      this.setState(prevState => ({
-        count: prevState.count + 1
-      }));
+      this.setState(prevState => {
+        console.warn('preveState', prevState)
+        return {
+          count: prevState.count + 1
+        }
+      });
     }, 3000);
   }
 
@@ -225,6 +251,7 @@ class LifecycleTestComponent extends Component<LifecycleTestComponentProps, Life
   handleIncrement = () => {
     console.log('🔄 LifecycleTestComponent - 增加计数');
     this.setState(prevState => {
+      console.warn('prevState', prevState)
       return ({
         count: prevState.count + 1
       })
@@ -233,9 +260,12 @@ class LifecycleTestComponent extends Component<LifecycleTestComponentProps, Life
 
   handleToggleUpdate = () => {
     console.log('🔄 LifecycleTestComponent - 切换更新状态');
-    this.setState(prevState => ({
-      shouldUpdate: !prevState.shouldUpdate
-    }));
+    this.setState(prevState => {
+      console.log('handleToggleUpdate', prevState)
+      return ({
+        shouldUpdate: !prevState.shouldUpdate
+      })
+    });
   }
 
   handleForceUpdate = () => {
@@ -325,6 +355,7 @@ class ErrorBoundary extends Component<{ children: any }, ErrorBoundaryState> {
   }
 
   render() {
+    console.log('render-ErrorBoundary', this.state)
     if (this.state.hasError) {
       return (
         <div key={'1'} style={{
@@ -360,7 +391,9 @@ const App = () => {
         <p key={'2'} style={{ textAlign: 'center', color: '#666' }}>
           打开浏览器控制台查看详细的生命周期日志
         </p>
-        <ParentComponent key={'3'} />
+        <Ctx.Provider value={{ cnt: 4444 }}>
+          <ParentComponent key={'3'} />
+        </Ctx.Provider>
       </div>
     </ErrorBoundary>
   );

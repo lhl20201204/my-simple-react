@@ -1,45 +1,66 @@
 import _ from "lodash";
-import { addHookIndex, currentlyFiber, handleFunctionComponent, setFiberWithFlags } from "./beginWork";
-import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyContext, MyDependenciesContext, MyFiber, MyRef } from "./type";
-import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, ROOTCOMPONENT, rootFiber, UPDATE, wipRoot, PROVIDERCOMPONENT } from "./const";
+import { addHookIndex, currentlyFiber, setFiberWithFlags } from "./beginWork";
+import { IDispatchValue, IEffectHook, IMemoOrCallbackHook, IRefHook, IStateHook, IStateParams, MyContext, MyDependenciesContext, MyFiber, MyFiberRef, MyRef } from "./type";
+import { DESTROY_CONTEXT, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, getBatchUpdating, getCurrentContext, LAYOUT_FLAGS, UPDATE, PROVIDERCOMPONENT } from "./const";
 import { ensureRootIsScheduled, runInBatchUpdate } from "./ReactDom";
-import { isDepEqual, logFiberIdPath } from "./utils";
-
-export function findFiberPath(fiber: MyFiber) {
-  const ret = [];
-  while (fiber) {
-    ret.push(fiber);
-    fiber = fiber.return;
-  }
-  return ret;
-}
-
-export function mayBeTargetFiber(f: MyFiber, s: MyFiber) {
-  return f === s || f?.alternate === s;
-}
+import { isDepEqual, fiberHadAlternate, flagsContain } from "./utils";
+import { findCurrentFiberInCurrentRoot } from "./fiber";
 
 
-export function findTagFiber(targetFiber: MyFiber, path: MyFiber[], rootFiber: MyFiber): MyFiber | null {
-  if (mayBeTargetFiber(targetFiber, rootFiber)) {
-    return rootFiber;
-  }
-  path.pop();
-  const top = path[path.length - 1];
-  let f = rootFiber.child;
-  while (f) {
-    const ret = mayBeTargetFiber(top, f) ?  findTagFiber(targetFiber, path, f) : null
-    if (ret) {
-      return ret;
+
+export function getDispatchAction<T>(
+  fiber: MyFiber,
+  updateList: IDispatchValue<T>[],
+  getValue: () => T,
+  setValue: (c: T) => void,
+  FLAGS: number
+) {
+  return function (x: IDispatchValue<T>) {
+    // console.log(_.cloneDeep(fiber))
+    const currentFiber = findCurrentFiberInCurrentRoot(fiber);
+    // console.error('getDispatchAction', _.cloneDeep({ currentFiber, fiber, bol: fiberHadAlternate(fiber)}))
+    if (!currentFiber) {
+      return;
     }
-    f = f.sibling;
+
+    const oldValue = getValue() //newHook.memoizeState;
+
+    // console.error('setState', _.cloneDeep({ currentFiber }), getFiberIdPathArrow(currentFiber))
+    if (!flagsContain(currentFiber.flags, FLAGS) && !currentlyFiber && getCurrentContext() !== DESTROY_CONTEXT) {
+      // console.error('直接执行setState', x, _.cloneDeep(updateList))
+      // newHook.memoizeState = ;
+      setValue(x as T)
+    } else {
+      // console.error('push到updateList', x, _.cloneDeep(updateList))
+      // console.log('push到updateList', x, oldValue, _.cloneDeep(updateList))
+      if (x !== oldValue) {
+        updateList.push(x);
+      } else if (currentlyFiber && (
+        ![fiber, fiber?.alternate].includes(currentlyFiber)
+      )) {
+        // const path = findFiberPath(currentlyFiber)
+        // const targetFiber = findTargetFiber(currentlyFiber, path, wipRoot);
+        // handleFunctionComponent(targetFiber, !! targetFiber.ref);
+        // currentlyFiber.type(currentlyFiber.pendingProps, currentlyFiber.ref);
+      }
+    }
+
+    if ((_.isFunction(x) || x !== oldValue) && !flagsContain(currentFiber.flags, FLAGS)) {
+      setFiberWithFlags(currentFiber, FLAGS)
+      // console.warn('setFiberWithFlags',wipRoot, rootFiber, findFiberPath(fiber), _.cloneDeep(currentFiber), getFiberIdPathArrow(currentFiber))
+    }
+
+    if (!getBatchUpdating() && flagsContain(currentFiber.flags , FLAGS)) {      
+      // console.log('ensureRootIsScheduled', _.cloneDeep(currentFiber))
+      ensureRootIsScheduled(true)
+    }
   }
-  return null;
 }
 
 export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) => void] {
   const fiber = currentlyFiber;
 
-  if (fiber.alternate) {
+  if (fiberHadAlternate(fiber)) {
     // console.log(_.cloneDeep({ fiber }))
     const hook = fiber.hook[addHookIndex()] as IStateHook<T>;
     // console.error('useState', _.cloneDeep(hook))
@@ -59,45 +80,13 @@ export function MyUseState<T>(x: IStateParams<T>): [T, (x: IDispatchValue<T>) =>
   const newHook: IStateHook<T> = {
     memoizeState: v,
     updateList,
-    dispatchAction: (x: IDispatchValue<T>) => {
-      const path = findFiberPath(fiber);
-      const currentRootFiber = path[path.length - 1];
-      if (currentRootFiber.tag !== ROOTCOMPONENT) {
-        // console.warn('组件已经卸载')
-        return;
-      }
-      const currentFiber = wipRoot ? findTagFiber(fiber, path, wipRoot) : rootFiber ? findTagFiber(fiber, path, rootFiber) : fiber;
-
-      const oldValue = newHook.memoizeState;
-
-      // console.error('setState', _.cloneDeep({ currentFiber }), logFiberIdPath(currentFiber))
-      if (!(currentFiber.flags & UPDATE) && !currentlyFiber && getCurrentContext() !== DESTROY_CONTEXT) {
-        // console.error('直接执行setState', x, _.cloneDeep(updateList))
-        newHook.memoizeState = _.isFunction(x) ? x(newHook.memoizeState) : x;
-      } else {
-        // console.error('push到updateList', x, _.cloneDeep(updateList))
-        // console.log('push到updateList', x, oldValue, _.cloneDeep(updateList))
-        if (x !== oldValue) {
-          updateList.push(x);
-        } else if (currentlyFiber && (
-          ![fiber, fiber?.alternate].includes(currentlyFiber)
-        )) {
-          // const path = findFiberPath(currentlyFiber)
-          // const targetFiber = findTagFiber(currentlyFiber, path, wipRoot);
-          // handleFunctionComponent(targetFiber, !! targetFiber.ref);
-          // currentlyFiber.type(currentlyFiber.pendingProps, currentlyFiber.ref);
-        }
-      }
-
-      if ((_.isFunction(x) || x !== oldValue) && !(currentFiber.flags & UPDATE)) {
-        setFiberWithFlags(currentFiber, UPDATE)
-        // console.warn('setFiberWithFlags',wipRoot, rootFiber, findFiberPath(fiber), _.cloneDeep(currentFiber), logFiberIdPath(currentFiber))
-      }
-
-      if (!getBatchUpdating() && !!(currentFiber.flags & UPDATE)) {
-        ensureRootIsScheduled(true)
-      }
-    }
+    dispatchAction: getDispatchAction(
+      fiber,
+      updateList,
+      () => newHook.memoizeState,
+      (x) => {
+        newHook.memoizeState = _.isFunction(x) ? x(newHook.memoizeState) : x
+      }, UPDATE),
   }
   addHookIndex()
   fiber.hook.push(newHook)
@@ -121,7 +110,8 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
 ) => {
   return function useEffect(create: () => (() => void) | void, deps: unknown[]) {
     const fiber: MyFiber = currentlyFiber;
-    if (fiber.alternate) {
+    // console.error('useEffect', _.cloneDeep({ create, deps, fiber, bol: fiberHadAlternate(fiber)}))
+    if (fiberHadAlternate(fiber)) {
       const hook = fiber.hook[addHookIndex()] as IEffectHook;
       //  if (!isDepEqual(hook.deps, deps)) {
       //   //  console.log('处罚effect', _.cloneDeep([...hook.deps]), _.cloneDeep([...deps]))
@@ -139,7 +129,7 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
       //   //  hook.tag &= ~EFFECT_HOOK_HAS_EFFECT;
       //  }
       if (!isDepEqual(hook.deps, deps)) {
-        if (!(fiber.flags & flags)) {
+        if (!flagsContain(fiber.flags, flags)) {
           setFiberWithFlags(fiber, flags);
         }
       }
@@ -165,7 +155,7 @@ export const getEffectFn = (tag: typeof EFFECT_LAYOUT | typeof EFFECT_PASSIVE,
     // console.warn('初始化', _.cloneDeep(newHook))
     // 首次进来必定需要更新。
     pushEffect(fiber, newHook);
-    if (!(fiber.flags & flags)) {
+    if (!flagsContain(fiber.flags, flags)) {
       setFiberWithFlags(fiber, flags);
     }
     //  console.log(fiber, '打上fiber', flags, newHook.tag);
@@ -180,7 +170,7 @@ export const MyUseLayoutEffect = getEffectFn(EFFECT_LAYOUT, LAYOUT_FLAGS);
 
 export function MyUseRef<T>(x: T): { current: T } {
   const fiber: MyFiber = currentlyFiber;
-  if (fiber.alternate) {
+  if (fiberHadAlternate(fiber)) {
     const hook = fiber.hook[addHookIndex()] as IRefHook;
     return hook.memoizeState
   }
@@ -195,7 +185,7 @@ export function MyUseRef<T>(x: T): { current: T } {
 
 export function MyUseMemo<T>(cb: () => T, deps: any[]): T {
   const fiber: MyFiber = currentlyFiber;
-  if (fiber.alternate) {
+  if (fiberHadAlternate(fiber)) {
     const hook = fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
     if (!isDepEqual(hook.deps, deps)) {
       hook.deps = deps;
@@ -211,7 +201,7 @@ export function MyUseMemo<T>(cb: () => T, deps: any[]): T {
   return newHook.memoizeState
 }
 
-export function MyUseImperativeHandle<T>(ref: MyRef<T>, handle: () => T, deps?: any[]) {
+export function MyUseImperativeHandle<T>(ref: MyFiberRef<T>, handle: () => T, deps?: any[]) {
   return MyUseLayoutEffect(() => {
     const instance = handle();
     if (_.isFunction(ref)) {
@@ -230,7 +220,7 @@ export function MyUseImperativeHandle<T>(ref: MyRef<T>, handle: () => T, deps?: 
 
 export function MyUseCallback<T extends Function>(cb: T, deps: any[]): T {
   const fiber: MyFiber = currentlyFiber;
-  if (fiber.alternate) {
+  if (fiberHadAlternate(fiber)) {
     const hook = fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
     if (!isDepEqual(hook.deps, deps)) {
       hook.deps = deps;
@@ -246,22 +236,8 @@ export function MyUseCallback<T extends Function>(cb: T, deps: any[]): T {
   return newHook.memoizeState
 }
 
-export function MyUseContext<T>(context: MyContext<T>): T {
-  const fiber: MyFiber = currentlyFiber;
-  if (fiber.alternate) {
-    fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
-    let f = fiber.dependencies?.firstContext;
-    while (f && f.context !== context) {
-      f = f.next;
-    }
-
-    if (!f || f.context !== context) {
-      return context._currentValue;
-    }
-    return f.memoizedValue as T;
-  }
-
-  let memoizedValue = undefined;
+export function addContextToFiber<T>(context: MyContext<T>, fiber: MyFiber) {
+  let memoizedValue = context._currentValue;
   let f = fiber;
   while (f) {
     if (f.tag === PROVIDERCOMPONENT && f.elementType._context === context) {
@@ -270,7 +246,6 @@ export function MyUseContext<T>(context: MyContext<T>): T {
     }
     f = f.return;
   }
-
   const newContext: MyDependenciesContext<T> = {
     context,
     memoizedValue,
@@ -292,6 +267,29 @@ export function MyUseContext<T>(context: MyContext<T>): T {
     }
     f.next = newContext
   }
+  return newContext;
+}
+
+export function readContext<T>(context: MyContext<T>, fiber: MyFiber) {
+  let f = fiber.dependencies?.firstContext;
+  while (f && f.context !== context) {
+    f = f.next;
+  }
+
+  if (!f || f.context !== context) {
+    return context._currentValue;
+  }
+  return f.memoizedValue as T;
+}
+
+export function MyUseContext<T>(context: MyContext<T>): T {
+  const fiber: MyFiber = currentlyFiber;
+  if (fiberHadAlternate(fiber)) {
+    fiber.hook[addHookIndex()] as IMemoOrCallbackHook;
+    return readContext(context, fiber)
+  }
+
+  const newContext = addContextToFiber(context, fiber)
   // 创建一个空的context；
   const newHook = {
   }

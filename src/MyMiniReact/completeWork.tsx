@@ -1,9 +1,10 @@
-import _, { first, update } from "lodash";
-import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, EFFECT_PASSIVE, PASSIVE_FLAGS, isInDebugger, LAYOUT_FLAGS, NOEFFECT, NOLANE, REFEFFECT, ROOTCOMPONENT, UPDATE, addToPendingUpdateFiberList } from "./const";
-import { createDom, isHostComponent } from "./dom";
-import { getRootFiber, pushEffect, setFiberWithFlags } from "./beginWork";
-import { IEffectHook, MyFiber } from "./type";
-import { getEffectListId, isDepEqual, logEffectType, logFiberIdPath } from "./utils";
+import _ from "lodash";
+import { DELETE, EFFECT_DESTROY, EFFECT_HOOK_HAS_EFFECT, EFFECT_LAYOUT, PASSIVE_FLAGS, LAYOUT_FLAGS, NOEFFECT, NOLANE, REFEFFECT, ROOTCOMPONENT, UPDATE, addToPendingUpdateFiberList, SUSPENSE_FLAGS, SUSPENSE_REMOVE, SUSPENSE_RECOVERY, RETRY_ERROR_BOUNDARY, setWorkInProgress, GetDeriveStateFromErrorFiberList } from "./const";
+import { createDom, isClassComponent, isHostComponent, isSuspenseComponent } from "./dom";
+import { dfsSumbitEffect, getRootFiber, handlePromiseError, setFiberWithFlags } from "./beginWork";
+import { MyFiber } from "./type";
+import { flagsAdd, flagsContain, flagsRemove, getFiberTag, isDepEqual, saveCurrentCanvasTree } from "./utils";
+import { ensureRootIsScheduled } from "./ReactDom";
 
 // function resetEffectQueue(fiber: MyFiber) {
 //   const hookList = fiber.hook;
@@ -18,9 +19,9 @@ import { getEffectListId, isDepEqual, logEffectType, logFiberIdPath } from "./ut
 // }
 
 export function sumbitEffect(fiber: MyFiber) {
-  const hasEffectBol = (fiber.flags & PASSIVE_FLAGS);
-  const hadLayoutEffectBol = (fiber.flags & LAYOUT_FLAGS);
-  const deleteBol = (fiber.flags & DELETE);
+  const hasEffectBol = flagsContain(fiber.flags, PASSIVE_FLAGS);
+  const hadLayoutEffectBol = flagsContain(fiber.flags, LAYOUT_FLAGS);
+  const deleteBol = flagsContain(fiber.flags, DELETE);
 
 
   // if (deleteBol) {
@@ -29,6 +30,11 @@ export function sumbitEffect(fiber: MyFiber) {
 
   if ((hasEffectBol || hadLayoutEffectBol || deleteBol) && (fiber.tag !== ROOTCOMPONENT)) {
     const parentFiber = getRootFiber(fiber);
+
+    // if (!fiber.updateQueue) {
+    //   console.log(_.cloneDeep({ fiber, hasEffectBol, hadLayoutEffectBol, deleteBol }))
+    //   console.trace();
+    // }
     // 递归上传effect
     let f = fiber.updateQueue.firstEffect;
     if (fiber.updateQueue.lastEffect) {
@@ -62,9 +68,9 @@ export function sumbitEffect(fiber: MyFiber) {
       //  }
 
       if (deleteBol) {
-        f.tag |= EFFECT_DESTROY | EFFECT_HOOK_HAS_EFFECT;
-        if (f.tag & EFFECT_LAYOUT) {
-          fiber.flags |= LAYOUT_FLAGS;
+        f.tag = flagsAdd(f.tag, EFFECT_DESTROY | EFFECT_HOOK_HAS_EFFECT);
+        if (flagsContain(f.tag, EFFECT_LAYOUT)) {
+          fiber.flags = flagsAdd(fiber.flags, LAYOUT_FLAGS);
         }
       };
 
@@ -78,7 +84,7 @@ export function sumbitEffect(fiber: MyFiber) {
         // console.log('插入', f.id, _.cloneDeep(f), deleteBol,
         //   _.cloneDeep({updateQueue: parentFiber.updateQueue}),
         //    [getEffectListId(parentFiber, true)]);
-        // console.error('sumbitEffect', logFiberIdPath(fiber), f.id, _.cloneDeep({ f }),
+        // console.error('sumbitEffect', getFiberIdPathArrow(fiber), f.id, _.cloneDeep({ f }),
         // [getEffectListId(parentFiber)])
         // f.tag &= ~EFFECT_HOOK_HAS_EFFECT
         // if (deleteBol) {
@@ -99,23 +105,74 @@ export function sumbitEffect(fiber: MyFiber) {
     //  resetEffectQueue(fiber)
     // }
 
-    if (deleteBol && (fiber.ref) && isHostComponent(fiber)) {
-      fiber.flags |= REFEFFECT;
+    if (deleteBol && (fiber.ref) && (isHostComponent(fiber) || isClassComponent(fiber))) {
+      // console.log('卸载ref', _.cloneDeep(fiber))
+      fiber.flags = flagsAdd(fiber.flags, REFEFFECT);
     }
 
     // console.log(_.cloneDeep({ fiber }))
 
     if (hasEffectBol) {
-      fiber.flags &= ~PASSIVE_FLAGS
+      fiber.flags = flagsRemove(fiber.flags, PASSIVE_FLAGS)
     }
   }
+}
+
+export function removeEffect(fiber: MyFiber) {
+  let t = fiber.firstEffect;
+  let e = fiber.lastEffect?.nextEffect ?? null;
+  while (t && t !== e) {
+    const next = t.nextEffect;
+    // console.error(t, getFiberTag(t), '被抛弃')
+    t.nextEffect = null;
+    t = next;
+  }
+  fiber.firstEffect = null;
+  fiber.lastEffect = null;
 }
 
 export function completeWork(fiber: MyFiber) {
   if (fiber.memoizedProps !== fiber.pendingProps) {
     console.error('-------->', _.cloneDeep({ fiber }))
   }
-  fiber.commitCount++;
+
+  if (flagsContain(fiber.flags, RETRY_ERROR_BOUNDARY)) {
+    saveCurrentCanvasTree();
+    fiber.flags = flagsRemove(fiber.flags, RETRY_ERROR_BOUNDARY);
+    let targetIndex = GetDeriveStateFromErrorFiberList.findIndex(c => c.fiber === fiber);
+    if (targetIndex > -1) {
+      while (targetIndex > -1) {
+        const error = GetDeriveStateFromErrorFiberList[targetIndex].error
+        GetDeriveStateFromErrorFiberList.splice(targetIndex, 1);
+        removeEffect(fiber);
+        try {
+          const newstate = fiber.type.getDerivedStateFromError(
+            error
+          )
+          // console.log('进入try', fiber, newstate)
+          if (newstate) {
+            fiber.stateNode.state = {
+              ...fiber.stateNode.state,
+              ...newstate
+            }
+            setFiberWithFlags(fiber, UPDATE)
+          }
+        } catch (e) {
+          // TODO error处理
+          (handlePromiseError(fiber, e, true))
+          return
+        }
+        targetIndex = GetDeriveStateFromErrorFiberList.findIndex(c => c.fiber === fiber)
+      }
+    } else {
+      console.warn('未处理的情况')
+    }
+
+    // setWorkInProgress(fiber)
+    ensureRootIsScheduled(true)
+    return
+  }
+
   if (fiber && isHostComponent(fiber) && !fiber.stateNode) {
     createDom(fiber);
   }
@@ -125,9 +182,70 @@ export function completeWork(fiber: MyFiber) {
   //   setFiberWithFlags(fiber, REFEFFECT)
   // }
 
-  // console.warn('completeWork', _.cloneDeep({ type: logEffectType(fiber),
+  // console.warn('completeWork', _.cloneDeep({ type: getFiberTag(fiber),
   //     id: fiber.id,
   //     fiber }))
+
+  if (isSuspenseComponent(fiber)) {
+    // console.error('completeWork-suspense', _.cloneDeep(fiber))
+    const insertMap = new Set();
+    let f = fiber.firstEffect;
+    const end = fiber.lastEffect?.nextEffect ?? null;
+    while (f && f !== end) {
+      insertMap.add(f)
+      f = f.nextEffect;
+    }
+    if (flagsContain(fiber.flags, SUSPENSE_FLAGS)) {
+
+      f = fiber.memoizedState.children;
+      while (f) {
+        // console.warn('将suspense的dom临时卸载', _.cloneDeep(f))
+        f.flags = flagsAdd(f.flags, SUSPENSE_REMOVE);
+        if (!insertMap.has(f)) {
+          if (fiber.lastEffect) {
+            fiber.lastEffect.nextEffect = f;
+          } else {
+            fiber.firstEffect = f;
+          }
+          insertMap.add(f);
+          fiber.lastEffect = f;
+        }
+        // setFiberWithFlags(f, SUSPENSE_REMOVE);
+        // f.flags |= SUSPENSE_REMOVE;
+        // console.error('suspense-remove', _.cloneDeep(f))
+        f = f.sibling;
+      }
+    } else {
+      f = fiber.memoizedState?.fallback;
+      while (f) {
+        f.return = fiber;
+        dfsSumbitEffect(f);
+        f = f.sibling;
+      }
+      if (fiber.memoizedState) {
+        fiber.memoizedState.fallback = null;
+      }
+      f = fiber.memoizedState?.children;
+      while (f) {
+        if (flagsContain(f.flags, SUSPENSE_REMOVE)) {
+          // console.warn('将隐藏的dom重新显示', _.cloneDeep(f))
+          f.flags = flagsRemove(f.flags, SUSPENSE_REMOVE);
+          f.flags = flagsAdd(f.flags, SUSPENSE_RECOVERY);
+          if (!insertMap.has(f)) {
+            if (fiber.lastEffect) {
+              fiber.lastEffect.nextEffect = f;
+            } else {
+              fiber.firstEffect = f;
+            }
+            insertMap.add(f);
+            fiber.lastEffect = f;
+          }
+        }
+        // console.error('suspense-remove', _.cloneDeep(f))
+        f = f.sibling;
+      }
+    }
+  }
 
   const parentFiber = fiber.return; // getRootFiber(fiber);
   if (fiber.lastEffect && parentFiber && fiber.tag !== ROOTCOMPONENT) {
@@ -151,7 +269,7 @@ export function completeWork(fiber: MyFiber) {
     } else {
       parentFiber.firstEffect = fiber;
     }
-    // console.log('推入fiber', fiber, logEffectType(fiber));
+    // console.log('推入fiber', fiber, getFiberTag(fiber));
     parentFiber.lastEffect = fiber;
     // console.log(fiber.id, '上传自身', parentFiber.id);
     fiber.firstEffect = null;
@@ -165,11 +283,15 @@ export function completeWork(fiber: MyFiber) {
   fiber.childLanes = NOLANE;
   if (fiber.lanes !== NOLANE) {
     // console.error('------>', fiber.id, _.cloneDeep(fiber))
-    if (fiber.flags & UPDATE) {
+    if (flagsContain(fiber.flags, UPDATE) || flagsContain(fiber.flags, SUSPENSE_FLAGS)) {
       // console.log('enter');
-      addToPendingUpdateFiberList(0, 0, fiber);
+      addToPendingUpdateFiberList(0, 0, fiber, fiber.flags);
     } else {
       console.error('------>', fiber.id, _.cloneDeep(fiber))
     }
   }
+
+  // if (fiber && fiber.return && isSuspenseComponent(fiber.return)) {
+  //   console.warn('completeWork-suspense-child', _.cloneDeep(fiber), fiber.lanes)
+  // }
 }

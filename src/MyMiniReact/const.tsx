@@ -21,6 +21,30 @@ export const REFEFFECT = 0b00100000;
 
 export const INSERTBEFORE = 0b01000000;
 
+export const CONTEXTCHANGE = 0b10000000;
+
+export const FORCEUPDATE = 0b100000000;
+
+export const SNAPSHOT = 0b1000000000;
+
+export const UPDATEORMOUNT = 0b10000000000;
+
+export const ErrorBoundary = 0b100000000000;
+
+export const NoHandleError = 0b1000000000000;
+
+export const SUSPENSE_FLAGS = 0b10000000000000;
+
+export const PLACEMENT_SKIP = 0b100000000000000;
+
+export const SUSPENSE_REMOVE = 0b1000000000000000;
+
+export const SUSPENSE_RECOVERY = 0b10000000000000000;
+
+export const RENDER_SUSPENSE = 0b100000000000000000;
+
+export const RETRY_ERROR_BOUNDARY = 0b1000000000000000000;
+
 export const NOEFFECT = 0b00000;
 
 export const EFFECT_PASSIVE = 0b000001;
@@ -39,7 +63,19 @@ export const EffECTDicts = {
   [PASSIVE_FLAGS]: 'PASSIVE_FLAGS',
   [REFEFFECT]: 'refEffect',
   [LAYOUT_FLAGS]: 'layoutEffectHook',
-  [INSERTBEFORE]: 'insertBefore'
+  [INSERTBEFORE]: 'insertBefore',
+  [CONTEXTCHANGE]: 'contextChange',
+  [FORCEUPDATE]: 'forceUpdate',
+  [SNAPSHOT]: 'snapshot',
+  [UPDATEORMOUNT]: 'updateOrMount',
+  [ErrorBoundary]: 'ErrorBoundary',
+  [NoHandleError]: 'NoHandleError',
+  [SUSPENSE_FLAGS]: 'suspenseFlags',
+  [PLACEMENT_SKIP]: 'placementSkip',
+  [SUSPENSE_REMOVE]: 'suspenseRemove',
+  [SUSPENSE_RECOVERY]: 'suspenseRecovery',
+  [RENDER_SUSPENSE]: 'renderSuspense',
+  [RETRY_ERROR_BOUNDARY]: 'retryErrorBoundary'
 };
 
 
@@ -81,6 +117,8 @@ export const SUSPENSECOMPONENT = 0b0000100000000;
 export const LAZYCOMPONENT = 0b0001000000000;
 
 export const PORTAlCOMPONENT = 0b0010000000000;
+
+export const CLASSCOMPONENT = 0b0100000000000;
 
 
 // let globalContextFlags: number = NOCONTEXT;
@@ -133,6 +171,16 @@ export let workInProgress: MyFiber | null = null;
 
 export const deletions: MyFiber[] = [];
 
+export const ErrorFiberList: {
+  fiber: MyFiber,
+  error: Error
+}[] = [];
+
+export const GetDeriveStateFromErrorFiberList: {
+  fiber: MyFiber,
+  error: Error
+}[] = [];
+
 export function setWorkInProgress(fiber: MyFiber) {
   workInProgress = fiber;
 }
@@ -183,10 +231,10 @@ export function setIsFlushEffecting(bol: boolean) {
   isFlushEffecting = bol
 }
 
-let pendingUpdateFiberList = [];
+let pendingUpdateFiberList: [MyFiber, number][] = [];
 
-export function addToPendingUpdateFiberList(start: number, end: number, fiber: MyFiber) {
-  pendingUpdateFiberList.splice(start, end, fiber)
+export function addToPendingUpdateFiberList(start: number, end: number, fiber: MyFiber, flag: number) {
+  pendingUpdateFiberList.splice(start, end, [fiber, flag])
 }
 
 export function getPendingUpdateFiberList() {

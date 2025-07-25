@@ -1,6 +1,7 @@
-import { originConsoleLog, runInRecordLog } from "./test";
-import { MyElement, MyElementType, MyElmemetKey, MyFiberRef, MyFunctionComponent, MyFunctionComponentProps, MyProps, MyReactNode, MyRef } from "./type";
+import { runInRecordLog } from "./test";
+import { IMyClassComponent, MyElement, MyElementType, MyElmemetKey, MyFunctionComponentProps, MyProps, MyReactNode, MyRef } from "./type";
 import _ from "lodash";
+import { funIsClassComponent } from "./dom";
 declare global {
   interface Window {
     WindomDom: any; // 你可以指定具体类型，比如 WindomDomType
@@ -132,11 +133,15 @@ declare global {
     }, 'style' | 'children'> & {
       key?: string | number;
       style?: CustomCSSProperties;
-      ref?: ((x: HTMLElementTagNameMap[K]) => void) | MyRef<HTMLElementTagNameMap[K]>;
+      ref?: ((x: HTMLElementTagNameMap[K] | null) => void) | MyRef<HTMLElementTagNameMap[K] | null>;
       children?: MyReactNode;
+    } : K extends IMyClassComponent ? MyFunctionComponentProps<K> & {
+      key?: string | number;
+      ref?: MyRef<
+      InstanceType<K & (abstract new (...args: any) => any)>> 
     } : never;
   }
-}
+} 
 
 export const globalHocMap = new WeakMap<MyElementType, MyElementType>();
 let pid = 0;
@@ -185,14 +190,6 @@ export function transformRef(ref) {
   return _.isFunction(ref) ? (...args) => runInRecordLog(() => ref(...args)) : ref;
 }
 
-function isClassComponent(type) {
-  return (
-    typeof type === 'function' &&
-    !!type.prototype &&
-    !!type.prototype.isReactComponent
-  );
-}
-
 export function jsxDev<T extends MyElementType,
   P extends MyProps, K extends MyElmemetKey>(
     type: T,
@@ -209,7 +206,8 @@ export function jsxDev<T extends MyElementType,
   // const bol = isMemo || isForWardRef
   let fnType = type;
   const originFnType = type;
-  if (_.isFunction(fnType) && !isClassComponent(fnType) && !fnType['jump-hoc']) {
+  // console.log('fnType ->',[fnType], fnType.prototype, funIsClassComponent(fnType))
+  if (_.isFunction(fnType) && !funIsClassComponent(fnType) && !fnType['jump-hoc']) {
     // if (!globalHocMap.has(type)) {
     //   globalHocMap.set(type, new Map());
     // }
@@ -235,13 +233,14 @@ export function jsxDev<T extends MyElementType,
             // console.error('劫持----->', [originFnType,
             //   originFnType.prototype?.isReactComponent
             // ])
-            let ret  = originFnType(props, ref)
+            let ret = originFnType(props, ref)
             // console.error('<-----劫持', originFnType)
             return ret
           })
         }
       };
       const generateComponent = obj[originFnType.name ?? 'generateComponent'];
+      _.set(generateComponent, 'displayName', originFnType.name ?? 'generateComponent');
       // console.error('hoc----->', originFnType)
       generateComponent['jump-hoc'] = true;
       hocMap.set(targetKey, changeType(type, generateComponent));
@@ -276,10 +275,10 @@ export const Fragment = window.reactFragmentType ?? Symbol('React.Fragment')
 export const jsxDEV = jsxDev;
 
 export function createElement<
-T extends MyElementType,
+  T extends MyElementType,
   P extends MyProps>(
-  type:T,
-  props: P
-) {
+    type: T,
+    props: P
+  ) {
   return jsxDev(type, _.omit(props, 'key') as MyProps, _.get(props, 'key'))
 }
